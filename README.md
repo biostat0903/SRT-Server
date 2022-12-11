@@ -6,3 +6,9 @@ The user can use the server to visit the website: https://www.spatialtranscripto
 
 ## Example Data
 We supplies the example data of MERFISH and 10x Visium data. All the data should be unzip to .
+
+## Q&A
+If there are any problems for SRT-Server, please feel free to ask here. We will ask you as soon as possible. 
+
+## Citation
+If you used our server, please cite the our paper: SRT-Server: Powering the analysis of spatially resolved transcriptomics studies <br>
