@@ -19,7 +19,6 @@ library(BASS)
 library(SpatialPCA)
 library(umap)
 library(Rtsne)
-library(ggplot2)
 library(bigreadr)
 
 # Fix parameters
