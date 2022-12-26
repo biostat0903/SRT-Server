@@ -25,8 +25,8 @@ library(bigreadr)
 # Fix parameters
 DIMS = 20              ## BASS: number of dimension for PCA
 GENENUM = 2000         ## BASS: number of gene for PCA 
-BURNIN = 2             ## BASS: number of burn-in
-SAMPLES = 10           ## BASS: number of MCMC iteration 
+BURNIN = 2000          ## BASS: number of burn-in
+SAMPLES = 10000        ## BASS: number of MCMC iteration 
 NORM = TRUE       
 SCALE = TRUE
 BATCH = FALSE
