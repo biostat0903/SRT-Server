@@ -553,19 +553,30 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
   } else {
     
     load(garnett_file)
+  }
+  if (species == "Human"){
+    
     sc_cds <- classify_cells(sc_cds, 
                              sc_classifier,
                              db = org.Hs.eg.db,
                              cluster_extend = TRUE,
                              cds_gene_id_type = "SYMBOL")
+  } else {
+    
+    sc_cds <- classify_cells(sc_cds, 
+                             sc_classifier,
+                             db = org.Mm.eg.db,
+                             cluster_extend = TRUE,
+                             cds_gene_id_type = "SYMBOL")
   }
+
   ## Output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
     
     system(paste0("mkdir ", result_dir))
   }
-  clust_outpath <- paste0(result_dir, "/ct_annot_scsorter_cluster.txt")
+  clust_outpath <- paste0(result_dir, "/ct_annot_garnett_cluster.txt")
   cell_type_dat <- cbind(colnames(count_dat), 
                          pData(sc_cds)$cluster_ext_type)
   write.table(cell_type_dat, 
@@ -615,7 +626,7 @@ ct.call <- function(data_path1,                         ## String: output path o
   return(0)
 }
 
-# Function 8: Seurat.post.func
+# Function 7: Seurat.post.func
 Seurat.post.func <- function(data_path,                 ## String: output path of qc procedure
                              out_path                   ## String: output path of ct procedure
 ){
@@ -658,7 +669,7 @@ Seurat.post.func <- function(data_path,                 ## String: output path o
   return(0)
 }
 
-# Function 9: Seurat.post.func
+# Function 8: Seurat.post.func
 BASS.post.func <- function(out_path                     ## String: output path of ct procedure
 ){
   
@@ -703,7 +714,7 @@ BASS.post.func <- function(out_path                     ## String: output path o
   return(0)
 }
 
-# Function 10: ct.post
+# Function 9: ct.post
 ct.post <- function(data_path,                          ## String: output path of qc procedure
                     out_path     
 ){
