@@ -543,7 +543,7 @@ svg_plt.plot <- function(data_path1,                       ## String: output pat
                          qqplot = FALSE,                   ## Boolean: qqplot
                          patternplot = FALSE,              ## Boolean: pattern plot
                          out_figures,
-                         zip_figures
+                         zip_figures = FALSE
 ){
   
   ## load io code
