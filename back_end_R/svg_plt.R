@@ -5,7 +5,7 @@
 
 # codePath setting
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-method_path <- "/applicatoins/docker-mnt/scripts/ST/dev"
+
 # load packages 
 library(Seurat)
 library(ggplot2)
@@ -146,7 +146,8 @@ svgpattern.plot <- function(data_path1,                          ## String: outp
                             out_path, 
                             svg_num = NULL,
                             gene_name = NULL, 
-                            out_figure = FALSE
+                            out_figure = FALSE,
+                            zip_figure = FALSE
 ){
   
   ## inputs
@@ -188,7 +189,11 @@ svgpattern.plot <- function(data_path1,                          ## String: outp
     ggsave(filename = paste0(out_path, "/svg_result/Svg_pattern_plot.tiff"), 
            plot = svgpt_plt, 
            height = svgpt_ht, width = svgpt_wt, units = "in", dpi = 300)
-    # system(paste0("gzip -f ", out_path, "/svg_result/Svg_pattern_plot.tiff"))
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, 
+                    "/svg_result/Svg_pattern_plot.tiff"))
+    }
   }
   
   return(svgpt_plt)
@@ -198,7 +203,8 @@ svgpattern.plot <- function(data_path1,                          ## String: outp
 pattern.plot <- function(data_path, 
                          out_path, 
                          pointsize = 0.01, 
-                         out_figure = FALSE
+                         out_figure = FALSE,
+                         zip_figure = FALSE
 ){
   
   ## inputs
@@ -257,7 +263,10 @@ pattern.plot <- function(data_path,
     ggsave(filename = paste0(out_path, "/svg_result/Pattern_plot.tiff"), 
            plot = pt_plt, limitsize = FALSE,
            height = pt_ht, width = pt_wt, units = "in", dpi = 300)
-    # system(paste0("gzip -f ", out_path, "/svg_result/Pattern_plot.tiff"))
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, "/svg_result/Pattern_plot.tiff"))
+    }
   }
   
   return(pt_plt)
@@ -374,7 +383,8 @@ qq.process <- function(data_path
 # Function 7: Visualize qq plot after data process
 qq.plot <- function(data_path, 
                     out_path,
-                    out_figure = FALSE
+                    out_figure = FALSE,
+                    zip_figure = FALSE
 ){
   
   ## inputs
@@ -390,7 +400,10 @@ qq.plot <- function(data_path,
     ggsave(filename = paste0(out_path, "/svg_result/qq_plot.tiff"),
            plot = qq_plt,
            height = qq_ht, width = qq_wt, units = "in", dpi = 300)
-    # system(paste0("gzip -f ", out_path, "/svg_result/qq_plot.tiff"))
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, "/svg_result/qq_plot.tiff"))
+    }
   }
   
   return(qq_plt)
@@ -496,7 +509,8 @@ hist.process <- function(data_path
 hist.plot <- function(cutoff = 0.01,
                       data_path, 
                       out_path, 
-                      out_figure = FALSE
+                      out_figure = FALSE,
+                      zip_figure = FALSE
 ){
   
   ## inputs
@@ -513,7 +527,10 @@ hist.plot <- function(cutoff = 0.01,
     ggsave(filename = paste0(out_path, "/svg_result/Histogram.tiff"),
            plot = hist_plt,
            height = hist_ht, width = hist_wt, units = "in", dpi = 300)
-    # system(paste0("gzip -f ", out_path, "/svg_result/Histogram.tiff"))
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, "/svg_result/Histogram.tiff"))
+    }
   }
   return(hist_plt)
 }
@@ -525,7 +542,8 @@ svg_plt.plot <- function(data_path1,                       ## String: output pat
                          svg_num, 
                          qqplot = FALSE,                   ## Boolean: qqplot
                          patternplot = FALSE,              ## Boolean: pattern plot
-                         out_figures
+                         out_figures,
+                         zip_figures
 ){
   
   ## load io code
@@ -545,7 +563,8 @@ svg_plt.plot <- function(data_path1,                       ## String: output pat
       
       qq_plt <- qq.plot(data_path = data_path2,
                         out_path = out_path,
-                        out_figure = out_figures)
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
       
     }else{
       
@@ -562,7 +581,8 @@ svg_plt.plot <- function(data_path1,                       ## String: output pat
       pattern_plt <- pattern.plot(data_path = data_path2,
                                   out_path = out_path,
                                   pointsize = 0.2,
-                                  out_figure = out_figures)
+                                  out_figure = out_figures, 
+                                  zip_figure = zip_figures)
     }else{
       
       stop("Please perform pattern estimation first!")
@@ -574,10 +594,12 @@ svg_plt.plot <- function(data_path1,                       ## String: output pat
                                     data_path2 = data_path2,
                                     out_path = out_path,
                                     svg_num = svg_num,
-                                    out_figure = out_figures)
+                                    out_figure = out_figures, 
+                                    zip_figure = zip_figures)
   hist_plt <- hist.plot(data_path = data_path2,
                         out_path = out_path,
-                        out_figure = out_figures)
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
   
   ## save plot data
   save(svgpattern_plt, pattern_plt, qq_plt, hist_plt, 
@@ -585,16 +607,3 @@ svg_plt.plot <- function(data_path1,                       ## String: output pat
   
   return(0)
 }
-
-# ###################
-# ### test code
-# data_path1 <- "/pt_data/494433291@qq.com/6bd987fa960b4670925be3d6fb6d1a57/tools-output/wf-482603378329780800/job-QC-482603403927618112"
-# data_path2 <- "/pt_data/494433291@qq.com/6bd987fa960b4670925be3d6fb6d1a57/tools-output/wf-482603378329780800/job-SVG-482603580214215232"
-# output_path <- "/pt_data/494433291@qq.com/6bd987fa960b4670925be3d6fb6d1a57/tools-output/wf-482603378329780800/job-SVG_PLT-482615371090625088"
-# svg_plt.plot(data_path1 = data_path1,
-#              data_path2 = data_path2,
-#              out_path = output_path,
-#              svg_num = 4,
-#              qqplot=T,
-#              patternplot = T, 
-#              out_figures = TRUE)
