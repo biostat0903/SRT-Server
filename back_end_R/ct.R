@@ -24,8 +24,8 @@ library(glmGamPoi)
 # Fix parameters
 DIMS = 20              ## number of dimension for PCA
 GENENUM = 2000         ## number of gene for PCA 
-BURNIN = 2        ## number of burn-in
-SAMPLES = 10        ## number of MCMC iteration 
+BURNIN = 2000          ## number of burn-in
+SAMPLES = 10000        ## number of MCMC iteration 
 NORM = TRUE
 SCALE = TRUE
 BATCH = FALSE
