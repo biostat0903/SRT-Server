@@ -1,7 +1,7 @@
 #! /usr/bin/env Rscript
 # quality control for st data
 # up-stream procedures: none
-# down-stream procedures: dr_cl.R, dr_cl_wr.R, dr_cl_sp.R, svg.R, dc.R
+# down-stream procedures: decon.R, svg.R, ct.R, sdd.R
 
 # Set method_path 
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
@@ -14,11 +14,11 @@ library(bigreadr)
 # Function 1: qc check 
 qc.check <- function(data_path = NULL,        ## String: path string of samples *****(required)
                      platform = NULL,         ## String: platform for st data *****(required)
-                     ## four platforms: {Visium}, {Merfish}, {Seqfish}, {Slideseq}
+                                              ## four platforms: {Visium}, {Merfish}, {Seqfish}, {Slideseq}
                      min_cells = 10,          ## Integer: features detected in at least this many cells
-                     ## default setting: 10
+                                              ## default setting: 10
                      min_features = 100,      ## Integer: cells where at least this many features are detected
-                     ## default setting: 100
+                                              ## default setting: 100
                      out_path = NULL          ## String: path for each sample
 ){
   
@@ -44,28 +44,33 @@ LoadMerfish_QC <- function(data_path,         ## path for st data
   } 
   ## read data
   count_data <- fread2(paste0(data_path, "/cell_by_gene.csv"))
+  if("V1" %in% colnames(count_data)){
+    
+    row.names(count_data) <- count_data[, 1]
+    count_data <- count_data[, -1]
+  }
   ### delete "blank" gene
   count_data <- count_data[, !grepl("Blank", colnames(count_data))]
-  message("Before QC, the data contains ", dim(count_data)[1], 
-          " spots and ", dim(count_data)[2], " genes.\n")
-  cell_ID <- count_data[, 1]
-  count_data <- count_data[, -1] %>% t
-  colnames(count_data) <- cell_ID
+  count_data <- t(count_data)
+  message("Before QC, the data contains ", dim(count_data)[2], 
+          " spots and ", dim(count_data)[1], " genes.\n")
   meta_data <- fread2(paste0(data_path, "/cell_metadata.csv"))
-  meta_data <- meta_data[, -1]
-  rownames(meta_data) <- cell_ID
-  
+  if("V1" %in% colnames(meta_data)){
+    
+    row.names(meta_data) <- colnames(count_data)
+    meta_data <- meta_data[, -1]
+  }
   ## pre-process data
   seurat_obj <- CreateSeuratObject(counts = count_data, 
                                    min.cells = min_cells, 
                                    min.features = min_features, 
                                    meta.data = meta_data)
   count_data_qc <- as.matrix(seurat_obj@assays$RNA@counts)
-  message("After QC, the data contains ", dim(count_data_qc)[2], 
-          " spots and ", dim(count_data_qc)[1], " genes.\n")
   meta_data_qc <- cbind.data.frame(x = seurat_obj@meta.data$center_x, 
                                    y = seurat_obj@meta.data$center_y)
-  
+  message("After QC, the data contains ", dim(count_data_qc)[2], 
+          " spots and ", dim(count_data_qc)[1], " genes.\n")
+
   # if(ncol(count_data_qc) > 20000){
   #   
   #   seed <- as.numeric(as.POSIXct(Sys.time()))
@@ -75,7 +80,6 @@ LoadMerfish_QC <- function(data_path,         ## path for st data
   #   meta_data_qc <- meta_data_qc[cell_ind, ]
   #   warning("The cell number is larger than 20 thousands. We randomly select 20 thousands cells to perform the following analysis.")
   # }
-  
   spatial_result <- list(count = as.matrix(count_data_qc), 
                          meta.data = as.matrix(meta_data_qc))
   
@@ -326,8 +330,6 @@ LoadGeneal_QC <- function(data_path,         ## path for st data
   return(spatial_result)
 }  
 
-
-
 # Function 7: qc call
 qc.call <- function(data_path,                ## String: path for st data
                     out_path                  ## String: path for check file
@@ -435,15 +437,3 @@ qc.call <- function(data_path,                ## String: path for st data
   
   return(0)
 }
-
-# ###################
-# ### test code
-# input_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/02_Visium/Parent_Visium_Human_BreastCancer"
-# output_path <- "/net/mulan/disk2/yasheng/stwebProject/test/qc"
-# qc.check(data_path = input_path,
-#          platform = "Visium",
-#          min_cells = 100,
-#          min_features = 100,
-#          out_path = output_path)
-# qc.call(data_path = output_path,
-#         out_path = output_path)
