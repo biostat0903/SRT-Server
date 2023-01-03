@@ -14,7 +14,7 @@ library(bigreadr)
 # Function 1: qc check 
 qc.check <- function(data_path = NULL,        ## String: path string of samples *****(required)
                      platform = NULL,         ## String: platform for st data *****(required)
-                                              ## four platforms: {Visium}, {Merfish}, {Seqfish}, {Slideseq}
+                                              ## four platforms: {Visium}, {Merfish}, {Seqfish}, {Slideseq}, {Generic_Cell}, {Generic_Spot}
                      min_cells = 10,          ## Integer: features detected in at least this many cells
                                               ## default setting: 10
                      min_features = 100,      ## Integer: cells where at least this many features are detected
@@ -31,7 +31,7 @@ qc.check <- function(data_path = NULL,        ## String: path string of samples 
   return(0)
 }
 
-# Function 2: quality control MERFISH data
+# Function 2.1: quality control MERFISH data
 LoadMerfish_QC <- function(data_path,         ## path for st data
                            min_features,      ## minimum feature number for each cell
                            min_cells          ## minimum cell number for each feature
@@ -86,7 +86,7 @@ LoadMerfish_QC <- function(data_path,         ## path for st data
   return(spatial_result)
 }  
 
-# Function 3: quality control Visium data 
+# Function 2.2: quality control Visium data 
 LoadVisium_QC <- function(data_path,          ## path for st data
                           min_features,       ## minimum feature number for each cell
                           min_cells           ## minimum cell number for each feature
@@ -134,7 +134,7 @@ LoadVisium_QC <- function(data_path,          ## path for st data
   return(spatial_result)
 }
 
-# Function 4: quality control SEQFISH data
+# Function 2.3: quality control SEQFISH data
 LoadSeqfish_QC <- function(data_path = NULL,  ## path for st data
                            min_features,      ## minimum feature number for each cell
                            min_cells          ## minimum cell number for each feature
@@ -242,13 +242,12 @@ LoadSeqfish_QC <- function(data_path = NULL,  ## path for st data
   return(spatial_result)
 }  
 
-# Function 5: quality control Slide-seq data
+# Function 2.4: quality control Slide-seq data
 LoadSlideseq_QC <- function(data_path,        ## path for st data
                             min_features,     ## minimum feature number for each cell
                             min_cells         ## minimum cell number for each feature
 ){
   
-  # data_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/04_slide-seq/Mouse_Hippocampus2/"
   ## check files
   file_names <- list.files(data_path)
   if(sum(grepl("location", file_names)) != 1 | sum(grepl("expression", file_names)) != 1){
@@ -291,7 +290,7 @@ LoadSlideseq_QC <- function(data_path,        ## path for st data
   return(spatial_result)
 }  
 
-# Function 6: quality control general format
+# Function 2.5: quality control general format
 LoadGeneal_QC <- function(data_path,         ## path for st data
                           min_features,      ## minimum feature number for each cell
                           min_cells          ## minimum cell number for each feature
@@ -304,36 +303,41 @@ LoadGeneal_QC <- function(data_path,         ## path for st data
   } 
   ## read data
   count_data <- fread2(paste0(data_path, "/gene_expression.csv"))
+  if("V1" %in% colnames(count_data)){
+    
+    row.names(count_data) <- count_data[, 1]
+    count_data <- count_data[, -1]
+  }
   ### delete "blank" gene
-  message("Before QC, the data contains ", dim(count_data)[1], 
-          " spots and ", dim(count_data)[2], " genes.\n")
-  cell_ID <- count_data[, 1]
-  count_data <- count_data[, -1] %>% t
-  colnames(count_data) <- cell_ID
+  count_data <- count_data[, !grepl("Blank", colnames(count_data))]
+  count_data <- t(count_data)
+  message("Before QC, the data contains ", dim(count_data)[2], 
+          " spots and ", dim(count_data)[1], " genes.\n")
   meta_data <- fread2(paste0(data_path, "/cell_location.csv"))
-  meta_data <- meta_data[, c(2, 3)]
-  rownames(meta_data) <- cell_ID
-  
+  if("V1" %in% colnames(meta_data)){
+    
+    row.names(meta_data) <- colnames(count_data)
+    meta_data <- meta_data[, -1]
+  }
   ## pre-process data
   seurat_obj <- CreateSeuratObject(counts = count_data, 
                                    min.cells = min_cells, 
                                    min.features = min_features, 
                                    meta.data = meta_data)
   count_data_qc <- as.matrix(seurat_obj@assays$RNA@counts)
+  meta_data_qc <- cbind.data.frame(x = seurat_obj@meta.data$center_x, 
+                                   y = seurat_obj@meta.data$center_y)
   message("After QC, the data contains ", dim(count_data_qc)[2], 
           " spots and ", dim(count_data_qc)[1], " genes.\n")
-  meta_data_qc <- cbind.data.frame(x = seurat_obj@meta.data$x, 
-                                   y = seurat_obj@meta.data$y)
   spatial_result <- list(count = as.matrix(count_data_qc), 
                          meta.data = as.matrix(meta_data_qc))
   
   return(spatial_result)
 }  
 
-# Function 7: qc call
+# Function 2.6: qc call
 qc.call <- function(data_path,                ## String: path for st data
                     out_path                  ## String: path for check file
-                    
 ){
   
   ## load io code
@@ -384,6 +388,18 @@ qc.call <- function(data_path,                ## String: path for st data
     
     spatial_data_all <- plyr::alply(c(1: sample_size), 1, function(a){
       spatial_data <- try(LoadSlideseq_QC(check_file[a], min_features, min_cells), silent = T)
+      if (inherits(spatial_data, "try-error")){
+        
+        stop(paste0("File of sample ", a, " is wrong!"))
+      }
+      return(spatial_data)
+    })
+  }
+  ### Generic format
+  if (platform %in% c("Generic_Cell", "Generic_Spot")){
+    
+    spatial_data_all <- plyr::alply(c(1: sample_size), 1, function(a){
+      spatial_data <- try(LoadGeneal_QC(check_file[a], min_features, min_cells), silent = T)
       if (inherits(spatial_data, "try-error")){
         
         stop(paste0("File of sample ", a, " is wrong!"))
