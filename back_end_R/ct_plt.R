@@ -297,7 +297,7 @@ ct_plt.plot <- function(data_path1,                                ## String: ou
                         bb_marker_gene_list = NULL,
                         bb_marker_num,
                         out_figures, 
-                        zip_figures
+                        zip_figures = FALSE
 ){
   
   ## load ct check file
