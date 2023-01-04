@@ -543,7 +543,7 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
     }
     if(out_figure == TRUE){
       
-      plt_ht <- ceiling(sample_size/2)*4
+      plt_ht <- min(ceiling(sample_size/2)*2, 6)
       plt_wt <- min(2, sample_size)*4 + 2
       ggsave(filename = loc_name, plot = ct_loc_plt,
              height = plt_ht+1, width = plt_wt, units = "in",
