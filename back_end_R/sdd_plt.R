@@ -1,17 +1,15 @@
 #! /usr/bin/env Rscript
-# visualize UMAP and location plot after using dr_cl_sp analysis
-# up-stream code: dr_cl_sp.R
+# visualize UMAP and location plot after using sdd analysis
+# up-stream code: sdd.R
 
+# Load packages
 library(dplyr)
 library(bigreadr)
 library(ggplot2)
-library(hdf5r)
-library(glue)
 
 # Set method_path
-method_path <- "/script/dev"
-# method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-# method_path <- "/applicatoins/docker-mnt/scripts/ST/dev"
+method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
+
 CT_COLS <- c("#98C1D9", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51", 
              "#E0FBFC", "#A8DADC", "#3D5A80", "#81B29A", "#E07A5F", 
              "#DBC9D8", "#b388eb", "#A4277C", "#BC93B2", "#0077b6", 
@@ -29,11 +27,9 @@ sdd_plt.plot <- function(data_path1,                                ## String: o
                          ft_marker_num,
                          bb_marker_gene_list = NULL,
                          bb_marker_num,
-                         out_figures
+                         out_figures, 
+                         zip_figures = FALSE
 ){
-  
-  cat(ft_marker_num, "\n")
-  cat(bb_marker_num, "\n")
   
   source(paste0(method_path, "/plt_utils.R"))
   ## load ct check file
@@ -49,21 +45,20 @@ sdd_plt.plot <- function(data_path1,                                ## String: o
                        mode_usage = "sdd", 
                        out_path = out_path, 
                        vis_type = "spatial_domain",
-                       out_figure = out_figures)
+                       out_figure = out_figures, 
+                       zip_figure = zip_figures)
   if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
     
     ft_marker_num <- NULL
   }
-  cat(ft_marker_num, "\n")
-  cat(ft_marker_gene_list, "\n")
   ft_plt <- feature.plot(data_path1 = data_path1,
                          data_path2 = data_path2,
                          mode_usage = "sdd",
                          marker_gene_list = ft_marker_gene_list,
                          marker_num = ft_marker_num,
                          out_path = out_path,
-                         out_figure = out_figures)
-  cat("ok2\n")
+                         out_figure = out_figures, 
+                         zip_figure = zip_figures)
   if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
     
     bb_marker_num <- NULL
@@ -74,26 +69,12 @@ sdd_plt.plot <- function(data_path1,                                ## String: o
                         marker_gene_list = bb_marker_gene_list,
                         marker_num = bb_marker_num,
                         out_path = out_path,
-                        out_figure = out_figures)
-  cat("ok3\n")
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
   ## choose different ct methods
-  if (sdd_methods == "SDD_sPCA-SpatialPCA"){
-    
-    loc_plt <- loc_plt2
-    save(loc_plt, ft_plt, bb_plt, 
-         file = paste0(out_path, "/sdd_result/plot.RData"))
-  }
-  if (sdd_methods == "CL_jo-BASS"){
-    
-    loc_plt1 <- loc.plot(data_path1 = data_path1, 
-                         data_path2 = data_path2,  
-                         mode_usage = "sdd", 
-                         out_path = out_path, 
-                         vis_type = "cell_type",
-                         out_figure = TRUE)
-    save(loc_plt1, loc_plt2, ft_plt, bb_plt, 
-         file = paste0(out_path, "/sdd_result/plot.RData"))
-  }
+  save(loc_plt2, ft_plt, bb_plt, 
+       file = paste0(out_path, "/sdd_result/plot.RData"))
+
   
   return(0)
 }
