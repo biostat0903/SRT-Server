@@ -37,18 +37,18 @@ ct.check <- function(data_path,                         ## String: output path o
                      ct_submodule = NULL,               ## String: cell typing sub-modules: {CT_PCA}, {CL_jo}, {CT_Annot}
                      methods = NULL,                    ## String: cell typing methods: {Seurat}, {BASS}, {scSorter}, {Garnett}
                      Seurat_resolutions = NULL,         ## String: resolution
-                     Seurat_integration = NULL,         ## String: integration method: {integration} and {SCTransform}
+                     Seurat_batch = NULL,               ## String: batch method: {Merge}, {Normalization_integration} and {SCTransform_integration}
                      Seurat_dims = NULL,                ## String: PCA number (re)
                      Seurat_anchors = NULL,             ## String: number of neighbors to use when picking anchors
                      BASS_cellNum = NULL,               ## String: number of cell types. 
                      BASS_domainNum = NULL,             ## String: number of spatial domains.
                      BASS_betaMethod = "SW",            ## String: fix the cell-cell interaction parameter. 
-                                                        ##         to be beta {fix} or estimate the parameter based on the 
-                                                        ##         data at hand {SW}.
+                     ##         to be beta {fix} or estimate the parameter based on the 
+                     ##         data at hand {SW}.
                      BASS_initMethod = "mclust",        ## String: Initialize the cell type clusters and spatial domains 
-                                                        ##         Two selections: {kmeans}, {mclust}.
+                     ##         Two selections: {kmeans}, {mclust}.
                      BASS_geneSelect = "sparkx",        ## String: feature selection method: spatial gene {sparkx} or
-                                                        ##         high variable gene {hvgs}.
+                     ##         high variable gene {hvgs}.
                      Annot_species = "Human",           ## String: species: {Human} and {Mouse}                 
                      Annot_status = NULL,               ## String: status
                      out_path                           ## String: output path for ct procedure
@@ -69,11 +69,11 @@ ct.check <- function(data_path,                         ## String: output path o
     
     stop("Please run the QC module!")
   }
-
+  
   ## Output the first method: CT_PCA-Seurat
   if (ct_methods == "CT_PCA-Seurat"){
     
-    if(is.null(Seurat_integration)){
+    if(is.null(Seurat_batch) | Seurat_batch == "Merge"){
       
       Seurat_dims <- NULL
       Seurat_anchors <- NULL
@@ -85,7 +85,7 @@ ct.check <- function(data_path,                         ## String: output path o
     if (sample_size != 1){
       
       write.table(c(ct_methods, 
-                    Seurat_resolutions, Seurat_integration, Seurat_dims, Seurat_anchors), 
+                    Seurat_resolutions, Seurat_batch, Seurat_dims, Seurat_anchors), 
                   file = paste0(out_path, "/ct_check_file.txt"), 
                   row.names = F, col.names = F, quote = F)
     } else {
@@ -96,10 +96,10 @@ ct.check <- function(data_path,                         ## String: output path o
                   row.names = F, col.names = F, quote = F)
     }
   }
-    
+  
   ## Output the second method: CL_jo-BASS
   if (ct_methods == "CL_jo-BASS"){
-
+    
     ## output
     write.table(c(ct_methods, 
                   BASS_cellNum, BASS_domainNum,
@@ -140,10 +140,6 @@ single.seurat <- function(seurat_obj                    ## seurat object with on
                               normalization.method = "LogNormalize", 
                               scalBe.factor = 10000,
                               verbose = FALSE)
-  seurat_obj <- FindVariableFeatures(seurat_obj, 
-                                     selection.method = "vst", 
-                                     nfeatures = 2000, 
-                                     verbose = FALSE)
   featureID <- rownames(seurat_obj)
   seurat_obj <- ScaleData(seurat_obj, 
                           features = featureID, 
@@ -220,7 +216,7 @@ sctransform.seurat <- function(seurat_obj_list,         ## seurat object with on
 Seurat.call.func <- function(st_list,                   ## String: output path of qc procedure
                              out_path                   ## String: output path for ct procedure
 ){
-
+  
   ## Set parameters for different sample settings
   sample_size <- length(st_list$count_list)
   check_file <- read.table(paste0(out_path, "/ct_check_file.txt"))[, 1]
@@ -231,22 +227,50 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
   ### two and more samples
   if(sample_size != 1){
     
-    integration <- check_file[3]
-    dims <- check_file[4] %>% 
-      strsplit(",") %>% unlist %>% as.numeric
-    anchors <- check_file[5] %>% 
-      strsplit(",") %>% unlist %>% as.numeric
+    batch <- check_file[3]
+    if (batch != "Merge"){
+      
+      dims <- check_file[4] %>% 
+        strsplit(",") %>% unlist %>% as.numeric
+      anchors <- check_file[5] %>% 
+        strsplit(",") %>% unlist %>% as.numeric
+    }
   }
   
   pc_list <- list()
   umap_list <- list()
-  ## one sample
-  if(sample_size == 1){
+  ## one sample or merge data
+  if(sample_size == 1 | batch == "Merge"){
     
+    if (sample_size == 1){
+      
+      seurat_obj <- CreateSeuratObject(st_list$count_list[[1]])
+      seurat_obj <- single.seurat(seurat_obj)
+    } else {
+      
+      seurat_obj <- plyr::alply(c(1: sample_size), 1, function(x) {
+        
+        s <- st_list$count_list[[x]]
+        s <- CreateSeuratObject(s)
+        s <- NormalizeData(s,
+                           verbose = FALSE)
+        s <- RenameCells(s, add.cell.id = paste("sample", x))
+        return(s)
+      })
+      seurat_obj <- Reduce("merge", seurat_obj)
+      featureID <- rownames(seurat_obj)
+      seurat_obj <- ScaleData(seurat_obj,
+                              features = featureID,
+                              verbose = FALSE)
+      # seurat_obj <- ScaleData(seurat_obj)
+      cat("3\n")
+    }
     ## Dimensional reduction
     ### PCA
-    seurat_obj <- CreateSeuratObject(st_list$count_list[[1]])
-    seurat_obj <- single.seurat(seurat_obj)
+    seurat_obj <- FindVariableFeatures(seurat_obj, 
+                                       selection.method = "vst", 
+                                       nfeatures = 2000, 
+                                       verbose = FALSE)
     seurat_obj <- RunPCA(seurat_obj,
                          npcs = 50,
                          verbose = FALSE)
@@ -293,7 +317,7 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
     clust_name <- vector()
     count <- 1
     for (anchor in anchors){
-
+      
       for (dim in dims){
         
         seurat_obj <- plyr::llply(st_list$count_list, function(s){
@@ -301,8 +325,9 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
           return(seurat_obj_s)
         })
         gridx <- paste0("cluster_anchor", anchor, "_dim", dim)
+        
         ## integration method
-        if (integration == "Integration"){
+        if (batch == "Normalization_Integration"){
           
           seurat_obj_norm <- lapply(X = seurat_obj, FUN = function(x) {
             x <- NormalizeData(x, verbose = FALSE)
@@ -315,7 +340,7 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
                                            anchor, dim)
         }
         ## SCTransform method
-        if (integration == "SCTransform"){
+        if (batch == "SCTransform_integration"){
           
           seurat_obj <- sctransform.seurat(seurat_obj, anchor, dim)
         }
@@ -569,7 +594,7 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
                              cluster_extend = TRUE,
                              cds_gene_id_type = "SYMBOL")
   }
-
+  
   ## Output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
@@ -656,7 +681,7 @@ Seurat.post.func <- function(data_path,                 ## String: output path o
   ## output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
-
+    
     system(paste0("mkdir ", result_dir))
   }
   ### get annotation
