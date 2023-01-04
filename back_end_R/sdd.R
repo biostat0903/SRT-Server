@@ -8,18 +8,11 @@
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
 
 # Load packages
-library(Seurat)
-library(SeuratDisk)
-library(hdf5r)
 library(dplyr)
-library(tidyr)
-library(stringr)
-library(glmGamPoi)
 library(BASS)
 library(SpatialPCA)
-library(umap)
-library(Rtsne)
-library(bigreadr)
+# library(umap)
+# library(Rtsne)
 
 # Fix parameters
 DIMS = 20              ## BASS: number of dimension for PCA
@@ -57,7 +50,6 @@ sdd.check <- function(data_path,                               ## String: output
                                                                ##         Two selections: {kmeans}, {mclust}.
                       BASS_geneSelect = "sparkx",              ## String: feature selection method: spatial gene {sparkx} or
                                                                ##         high variable gene {hvgs}.
-                      annot_method = "None",                   ## String: annotation methods: {None}, {scSorter}, {Garnett}
                       out_path                                 ## String: output path for ct procedure
 ){
   
@@ -74,7 +66,7 @@ sdd.check <- function(data_path,                               ## String: output
   ## Output the first method: CT_PCA-Seurat
   if (sdd_methods == "SDD_sPCA-SpatialPCA"){
 
-    write.table(c(sdd_methods, annot_method, 
+    write.table(c(sdd_methods, 
                   SpatialPCA_geneType, SpatialPCA_customGene, SpatialPCA_sparkVer,
                   SpatialPCA_clusMethod, SpatialPCA_domainNum, SpatialPCA_kernel,
                   SpatialPCA_coreNum), 
@@ -85,7 +77,7 @@ sdd.check <- function(data_path,                               ## String: output
   ## Output the second method: CL_jo-BASS
   if (sdd_methods == "CL_jo-BASS"){
 
-    write.table(c(sdd_methods, annot_method, 
+    write.table(c(sdd_methods, 
                   BASS_cellNum, BASS_domainNum,
                   BASS_initMethod, BASS_betaMethod, BASS_geneSelect),
                 file = paste0(out_path, "/sdd_check_file.txt"), 
@@ -104,20 +96,20 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
   source(paste0(method_path, "/io.R"))
   ## set parameters
   check_file <- read.table(file = paste0(out_path, "/sdd_check_file.txt"))[, 1]
-  gene_type <- check_file[3]
+  gene_type <- check_file[2]
   if (gene_type == "custom"){
     
-    custom_gene <- strsplit(check_file[4], ",")
+    custom_gene <- strsplit(check_file[3], ",")
     sparkversion <- NULL
   } else {
     
     custom_gene <- NULL
-    sparkversion <- check_file[5]
+    sparkversion <- check_file[4]
   }
-  clus_method <- check_file[6]
-  clus_num <- strsplit(check_file[7], ",")[[1]] %>% as.numeric()
-  kernel <- check_file[8]
-  core_num <- check_file[9] %>% as.numeric()
+  clus_method <- check_file[5]
+  clus_num <- strsplit(check_file[6], ",")[[1]] %>% as.numeric()
+  kernel <- check_file[7]
+  core_num <- check_file[8] %>% as.numeric()
   sample_size <- length(st_list$count_list)
   platform <- st_list[["platform"]]
   
@@ -161,14 +153,15 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
                                           SpatialPCnum = N_SPC)
     pca_obj <- SpatialPCA_SpatialPCs(pca_obj, 
                                      fast = pca_fast)
+    spca_obj <- pca_obj
     ## sample information
     sample_info <- data.frame(sample = "Sample1",
                               cell = rownames(pca_obj@location))
   } else {
     
-    ## wrapped multiple samples
-    pca_obj <- SpatialPCA_Multiple_Sample(count_list = st_list[[1]],
-                                          location_list = st_list[[2]],
+    ## integrate multiple samples
+    pca_obj <- SpatialPCA_Multiple_Sample(count_list = st_list$count_list,
+                                          location_list = st_list$coord_list,
                                           gene.type = gene_type,
                                           sparkversion = sparkversion,
                                           numCores_spark = core_num,
@@ -177,8 +170,7 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
                                           min.loctions = 0, 
                                           min.features = 0,
                                           bandwidth_common = 0.1)
-    
-    # sample information
+    spca_obj <- pca_obj$MultipleSample_SpatialPCA_object
     sample_info <- lapply(seq_along(st_list[[2]]), function(a){
       data.frame(sample = a,
                  cell = rownames(st_list[[2]][[a]]))
@@ -190,21 +182,20 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
   cl_list <- list()
   for (n_clust in clus_num) {
     
-    # Detect spatial domains
     if(clus_method == "louvain"){
+      
       cluster_label <- louvain_clustering(clusternum = n_clust, 
-                                          latent_dat = as.matrix(pca_obj@SpatialPCs),
-                                          knearest = round(sqrt(dim(pca_obj@SpatialPCs)[2])))
+                                          latent_dat = as.matrix(spca_obj@SpatialPCs),
+                                          knearest = round(sqrt(dim(spca_obj@SpatialPCs)[2])))
     } else if(clus_method == "walktrap"){
+      
       cluster_label <- walktrap_clustering(clusternum = n_clust, 
-                                           latent_dat = as.matrix(pca_obj@SpatialPCs),
-                                           knearest = round(sqrt(dim(pca_obj@SpatialPCs)[2])))
+                                           latent_dat = as.matrix(spca_obj@SpatialPCs),
+                                           knearest = round(sqrt(dim(spca_obj@SpatialPCs)[2])))
     }
     clusterlabel_refine  <- refine_cluster_10x(clusterlabels = cluster_label, 
-                                               location = pca_obj@location, 
+                                               location = spca_obj@location, 
                                                shape = refine_shape)
-    
-    # rename last cluster
     gridx <- paste0("clust_", length(unique(clusterlabel_refine)))
     cl_list[[gridx]] <- clusterlabel_refine
     
@@ -218,15 +209,15 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
     }
   }
   
-  ## output 
+  ## Output 
   spatialPCA_result <- list()
-  spatialPCA_result$pcs <- pca_obj@SpatialPCs %>% 
+  spatialPCA_result$pcs <- spca_obj@SpatialPCs %>% 
     as.data.frame()
   dimnames(spatialPCA_result$pcs) <- list(paste0("pc", 1: N_SPC),
                                         sample_info$cell)
-  spatialPCA_result$normalized_expr <- pca_obj@normalized_expr %>% 
+  spatialPCA_result$normalized_expr <- spca_obj@normalized_expr %>% 
     as.matrix()
-  spatialPCA_result$location <- pca_obj@location %>% 
+  spatialPCA_result$location <- spca_obj@location %>% 
     as.data.frame()
   spatialPCA_result$sample <- sample_info
   spatialPCA_result$clus <- cl_list[!duplicated(names(cl_list))]  # remove items with duplicated gridx names
@@ -249,13 +240,13 @@ BASS.call.func <- function(st_list,                            ## String: output
   sample_size <- length(st_list$count_list)
   ## load settings
   check_file <- read.table(paste0(out_path, "/sdd_check_file.txt"))[, 1]
-  Cs <- check_file[3] %>% 
+  Cs <- check_file[2] %>% 
     strsplit(",") %>% unlist %>% as.numeric
-  Rs <- check_file[4] %>% 
+  Rs <- check_file[3] %>% 
     strsplit(",") %>% unlist %>% as.numeric
-  init_method <- check_file[5] 
-  beta_method <- check_file[6]
-  gene_select <- check_file[7]
+  init_method <- check_file[4] 
+  beta_method <- check_file[5]
+  gene_select <- check_file[6]
   
   ## run BASS on R*C grid
   cl_dom_list <- list()
@@ -508,22 +499,3 @@ sdd.post <- function(data_path = NULL,                          ## String: outpu
   
   return(0)
 }
-
-# ###################
-# ### test code
-# data_path <- "/net/mulan/disk2/yasheng/stwebProject/03_result/02_Visium/V1_Mouse_Brain_Sagittal_Posterior"
-# output_path <- "/net/mulan/disk2/yasheng/stwebProject/03_result/02_Visium/V1_Mouse_Brain_Sagittal_Posterior"
-# sdd.check(data_path = data_path,
-#           sdd_submodule = "SDD_sPCA",
-#            methods = "SpatialPCA",
-#            spatialPCA_geneType = "spatial",
-#            SpatialPCA_customGene = "NULL",
-#            SpatialPCA_sparkVer = "sparkx",
-#            SpatialPCA_clusMethod = "louvain",
-#            SpatialPCA_domainNum = "6,8",
-#            SpatialPCA_kernel = "gaussian",
-#            SpatialPCA_coreNum = 5,
-#            annot = "Garnett",
-#            out_path = output_path)
-# sdd.call(data_path = data_path, out_path = output_path)
-# sdd.post(out_path = output_path)
