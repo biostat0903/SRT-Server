@@ -5,9 +5,6 @@
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-method_path <- "/applicatoins/docker-mnt/scripts/ST/dev"
-
-
 
 # load packages
 library(dplyr)
@@ -61,16 +58,14 @@ heatmap.visualize <- function(datt,
 ){
   
   datt <- as.matrix(datt)
-  
-  # row annotation
+  ## row annotation
   if (is.null(show_genes)) {
     show_genes <- rownames(datt)
   }
-  
   gene_pos <- match(show_genes,rownames(datt))
   row_anno <- rowAnnotation(gene=anno_mark(at = gene_pos,
                                            labels = show_genes))
-  # top annotation
+  ## top annotation
   cluster_info <- as.factor(cluster_info)
   names(cols) <- levels(cluster_info)
   cols <- cols[levels(cluster_info)]
@@ -93,8 +88,7 @@ heatmap.visualize <- function(datt,
                                   show_annotation_name = F,
                                   annotation_height = 0.1)
   }
-  
-  # plot heatmap
+  ## plot heatmap
   col_fun = colorRamp2(c(-4,-2, 0, 1, 2), viridis(5))
   plt <- Heatmap(datt,
                  na_col = "red",
@@ -176,7 +170,8 @@ heatmap.plot.func <- function(datt,
                               type = "ct",
                               marker_gene,
                               out_path, 
-                              out_figure
+                              out_figure, 
+                              zip_figure
 ){
 
   ## build heatmap object
@@ -199,7 +194,10 @@ heatmap.plot.func <- function(datt,
          res = 300, compression = "lzw")
     print(heatmap_plt)
     dev.off()
-    # system(paste0("gzip -f ", file_name))
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", file_name))
+    }
   } 
   
   return(0)
@@ -210,7 +208,8 @@ de_plt.plot <- function(data_path1,                       ## String: output path
                         data_path2,                       ## String: output path of qc procedure
                         out_path,                         ## String: output path of de_plt procedure
                         n_top = 5,
-                        out_figure = FALSE
+                        out_figure = FALSE,
+                        zip_figure = FALSE
 ){
   
   result_dir <- paste0(out_path, "/de_result")
@@ -219,16 +218,18 @@ de_plt.plot <- function(data_path1,                       ## String: output path
     system(paste0("mkdir ", result_dir))
   }
   ## inputs
-
   check_file <- read.table(paste0(data_path1, "/de_check_file.txt"))[, 1]
   submodule <- check_file[2]
   grid_use <- check_file[5]
-
-  if(grepl("CT", submodule) | grepl("jo", submodule)){
+  jo_mod <- "NA"
+  if (length(check_file) == 8){
     
-    marker_gene <- get.TopDEgene(data_path1,
-                                 n_top = n_top)
-    ## heatmap
+    jo_mod <- check_file[8]
+  }
+  
+  if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_mod == "ct")){
+    
+    marker_gene <- get.TopDEgene(data_path1, n_top = n_top)
     heatmap_res <- heatmap.process(data_path1 = data_path1, 
                                    data_path2 = data_path2,
                                    marker_gene = marker_gene)
@@ -240,13 +241,12 @@ de_plt.plot <- function(data_path1,                       ## String: output path
                                     type = "ct",
                                     marker_gene,
                                     out_path, 
-                                    out_figure)
+                                    out_figure,
+                                    zip_figure)
   }
-  if(grepl("SDD", submodule) | grepl("jo", submodule)){
+  if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_mod == "sdd")){
     
-    marker_gene <- get.TopDEgene(data_path1,
-                                n_top = n_top)
-    ## heatmap
+    marker_gene <- get.TopDEgene(data_path1, n_top = n_top)
     heatmap_res <- heatmap.process(data_path1 = data_path1, 
                                    data_path2 = data_path2,
                                    marker_gene = marker_gene)
@@ -258,20 +258,9 @@ de_plt.plot <- function(data_path1,                       ## String: output path
                                      type = "sdd",
                                      marker_gene,
                                      out_path, 
-                                     out_figure)
+                                     out_figure,
+                                     zip_figure)
   }
 
   return(0)
 }
-
-
-# ###################
-# ### test code
-# data_path1 <- "/pt_data/494433291@qq.com/9c6bd77f682d4ac294f6584f1b99a412/tools-output/wf-482611485185409600/job-QC-482611510833578560"
-# data_path2 <- "/pt_data/494433291@qq.com/9c6bd77f682d4ac294f6584f1b99a412/tools-output/wf-482611485185409600/job-DE-482614808126947904"
-# output_path <- "/pt_data/494433291@qq.com/9c6bd77f682d4ac294f6584f1b99a412/tools-output/wf-482611485185409600/job-DE_PLT-482845004960629312"
-# de_plt.plot(data_path1 = data_path2,
-#             data_path2 = data_path1,
-#             out_path = output_path,
-#             n_top = 5,
-#             out_figure = T)
