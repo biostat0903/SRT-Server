@@ -2,11 +2,11 @@
 # visualize UMAP and location plot after using seurat analysis
 # up-stream code: dr_cl.R
 
-library(dplyr)
-library(bigreadr)
+# Load pacakges
 library(ggplot2)
-library(hdf5r)
-library(glue)
+library(dplyr)
+library(plyr)
+library(bigreadr)
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
@@ -70,7 +70,8 @@ umap.process <- function(data_path
 # Function 3: Visualize UMAP plot after data process
 umap.plot <- function(data_path, 
                       out_path, 
-                      out_figure = FALSE
+                      out_figure = FALSE, 
+                      zip_figure = FALSE
 ){
   
   ## process data
@@ -97,8 +98,11 @@ umap.plot <- function(data_path,
         ggsave(filename = paste0(out_path, "/ct_result/UMAP_ct_", cl, ".tiff"),
                plot = ct_umap_plt,
                height = plt_ht, width = plt_wt, units = "in", dpi = 300)
-        # system(paste0("gzip -f ", out_path, "/ct_result/UMAP_ct_", 
-        #               cl, ".tiff"))
+        if(zip_figure == TRUE){
+          
+          system(paste0("gzip -f ", out_path, "/ct_result/UMAP_ct_",
+                        cl, ".tiff"))
+        }
       }
       return(ct_umap_plt)
     })
@@ -115,7 +119,8 @@ Seurat.plot.func <- function(data_path1,                              ## String:
                              ft_marker_num,                           ## String: gene number for feature plot
                              bb_marker_gene_list = NULL,              ## String: gene list for bubble plot
                              bb_marker_num,                           ## String: gene number for bubble plot
-                             out_figures                              ## Boolean: output figure
+                             out_figures,                             ## Boolean: output figure
+                             zip_figures
 ){
   
   ## Load plt_utils
@@ -127,13 +132,15 @@ Seurat.plot.func <- function(data_path1,                              ## String:
   }
   umap_plt <- umap.plot(data_path = data_path1,
                         out_path = out_path,
-                        out_figure = out_figures)
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
   loc_cl_plt <- loc.plot(data_path1 = data_path1,
                          data_path2 = data_path2,
                          mode_usage = "ct",
                          vis_type = "cell_type",
                          out_path = out_path,
-                         out_figure = out_figures)
+                         out_figure = out_figures, 
+                         zip_figure = zip_figures)
   if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
     
     ft_marker_num <- NULL
@@ -144,7 +151,8 @@ Seurat.plot.func <- function(data_path1,                              ## String:
                          marker_gene_list = NULL,
                          marker_num = ft_marker_num,
                          out_path = out_path,
-                         out_figure = out_figures)
+                         out_figure = out_figures, 
+                         zip_figure = zip_figures)
   if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
     
     bb_marker_num <- NULL
@@ -155,7 +163,8 @@ Seurat.plot.func <- function(data_path1,                              ## String:
                         marker_gene_list = NULL,
                         marker_num = bb_marker_num,
                         out_path = out_path,
-                        out_figure = out_figures)
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
   save(umap_plt, loc_cl_plt, ft_plt, bb_plt,
        file = paste0(out_path, "/ct_result/plot.RData"))
   
@@ -170,7 +179,8 @@ BASS.plot.func <- function(data_path1,                                ## String:
                            ft_marker_num,
                            bb_marker_gene_list = NULL,
                            bb_marker_num,
-                           out_figures
+                           out_figures,                             ## Boolean: output figure
+                           zip_figures
 ){
   
   source(paste0(method_path, "/plt_utils.R"))
@@ -184,13 +194,15 @@ BASS.plot.func <- function(data_path1,                                ## String:
                        mode_usage = "ct", 
                        out_path = out_path, 
                        vis_type = "cell_type",
-                       out_figure = TRUE)
+                       out_figure = out_figures, 
+                       zip_figure = zip_figures)
   loc_plt2 <- loc.plot(data_path1 = data_path1, 
                        data_path2 = data_path2,  
                        mode_usage = "ct", 
                        out_path = out_path, 
                        vis_type = "spatial_domain",
-                       out_figure = TRUE)
+                       out_figure = out_figures, 
+                       zip_figure = zip_figures)
   if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
     
     ft_marker_num <- NULL
@@ -201,7 +213,8 @@ BASS.plot.func <- function(data_path1,                                ## String:
                          marker_gene_list = ft_marker_gene_list,
                          marker_num = ft_marker_num,
                          out_path = out_path,
-                         out_figure = T)
+                         out_figure = out_figures, 
+                         zip_figure = zip_figures)
   if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
     
     bb_marker_num <- NULL
@@ -212,9 +225,64 @@ BASS.plot.func <- function(data_path1,                                ## String:
                         marker_gene_list = bb_marker_gene_list,
                         marker_num = bb_marker_num,
                         out_path = out_path,
-                        out_figure = T)
-  cat("ok5\n")
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
   save(loc_plt1, loc_plt2, ft_plt, bb_plt, 
+       file = paste0(out_path, "/ct_result/plot.RData"))
+  
+  return(0)
+}
+
+# Function 5
+Annot.plot.func <- function(data_path1,                                ## String: output path for ct procedure
+                            data_path2,                                ## String: output path for qc procedure
+                            out_path,                                  ## String: output path for ct procedure
+                            ft_marker_gene_list = NULL,
+                            ft_marker_num,
+                            bb_marker_gene_list = NULL,
+                            bb_marker_num,
+                            out_figures,                               ## Boolean: output figure
+                            zip_figures
+){
+  
+  source(paste0(method_path, "/plt_utils.R"))
+  result_dir <- paste0(out_path, "/ct_result")
+  if (!file.exists(result_dir)){
+    
+    system(paste0("mkdir ", result_dir))
+  }
+  loc_plt1 <- loc.plot(data_path1 = data_path1, 
+                       data_path2 = data_path2, 
+                       mode_usage = "ct", 
+                       out_path = out_path, 
+                       vis_type = "cell_type",
+                       out_figure = out_figures, 
+                       zip_figure = zip_figures)
+  if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
+    
+    ft_marker_num <- NULL
+  }
+  ft_plt <- feature.plot(data_path1 = data_path1,
+                         data_path2 = data_path2,
+                         mode_usage = "ct",
+                         marker_gene_list = ft_marker_gene_list,
+                         marker_num = ft_marker_num,
+                         out_path = out_path,
+                         out_figure = out_figures, 
+                         zip_figure = zip_figures)
+  if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
+    
+    bb_marker_num <- NULL
+  }
+  bb_plt <- bubble.plot(data_path1 = data_path1,
+                        data_path2 = data_path2,
+                        mode_usage = "ct",
+                        marker_gene_list = bb_marker_gene_list,
+                        marker_num = bb_marker_num,
+                        out_path = out_path,
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
+  save(loc_plt1, ft_plt, bb_plt, 
        file = paste0(out_path, "/ct_result/plot.RData"))
   
   return(0)
@@ -222,13 +290,14 @@ BASS.plot.func <- function(data_path1,                                ## String:
 
 # Function 6
 ct_plt.plot <- function(data_path1,                                ## String: output path for ct procedure
-                    data_path2,                                ## String: output path for qc procedure
-                    out_path,                                  ## String: output path for ct procedure
-                    ft_marker_gene_list = NULL,
-                    ft_marker_num,
-                    bb_marker_gene_list = NULL,
-                    bb_marker_num,
-                    out_figures
+                        data_path2,                                ## String: output path for qc procedure
+                        out_path,                                  ## String: output path for ct procedure
+                        ft_marker_gene_list = NULL,
+                        ft_marker_num,
+                        bb_marker_gene_list = NULL,
+                        bb_marker_num,
+                        out_figures, 
+                        zip_figures
 ){
   
   ## load ct check file
@@ -245,7 +314,8 @@ ct_plt.plot <- function(data_path1,                                ## String: ou
                                   ft_marker_num,
                                   bb_marker_gene_list,
                                   bb_marker_num,
-                                  out_figures)
+                                  out_figures, 
+                                  zip_figures)
   }
   if (ct_methods == "CL_jo-BASS"){
     
@@ -256,20 +326,22 @@ ct_plt.plot <- function(data_path1,                                ## String: ou
                                 ft_marker_num,
                                 bb_marker_gene_list,
                                 bb_marker_num,
-                                out_figures)
+                                out_figures, 
+                                zip_figures)
+  }
+  
+  if (ct_methods %in% c("CT_Annot-Garnett", "CT_Annot-scSorter")){
+    
+    ct_result <- Annot.plot.func(data_path1,          
+                                 data_path2,          
+                                 out_path,            
+                                 ft_marker_gene_list,
+                                 ft_marker_num,
+                                 bb_marker_gene_list,
+                                 bb_marker_num,
+                                 out_figures, 
+                                 zip_figures)
   }
   
   return(0)
 }
-
-
-# ###################
-# ### test code
-#data_path <- "/net/mulan/disk2/yasheng/stwebProject/03_result/02_Visium/V1_Mouse_Brain_Sagittal_Posterior"
-#output_path <- "/net/mulan/disk2/yasheng/stwebProject/03_result/02_Visium/V1_Mouse_Brain_Sagittal_Posterior"
-#ct.plot(data_path1 = output_path,
-#            data_path2 = data_path,
-#            out_path = output_path,
-#            ft_marker_num = 10,
-#            bb_marker_num = 50,
-#            out_figures = TRUE)
