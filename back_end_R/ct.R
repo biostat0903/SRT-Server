@@ -6,7 +6,7 @@
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-ref_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/ref"
+refer_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/ref"
 
 # Load packages
 library(Seurat)
@@ -17,9 +17,10 @@ library(monocle)
 library(garnett)
 library(org.Hs.eg.db)
 library(org.Mm.eg.db)
+library(glmGamPoi)
 library(hdf5r)
 library(dplyr)
-library(glmGamPoi)
+library(plyr)
 
 # Fix parameters
 DIMS = 20              ## number of dimension for PCA
@@ -43,12 +44,12 @@ ct.check <- function(data_path,                         ## String: output path o
                      BASS_cellNum = NULL,               ## String: number of cell types. 
                      BASS_domainNum = NULL,             ## String: number of spatial domains.
                      BASS_betaMethod = "SW",            ## String: fix the cell-cell interaction parameter. 
-                     ##         to be beta {fix} or estimate the parameter based on the 
-                     ##         data at hand {SW}.
+                                                        ##         to be beta {fix} or estimate the parameter based on the 
+                                                        ##         data at hand {SW}.
                      BASS_initMethod = "mclust",        ## String: Initialize the cell type clusters and spatial domains 
-                     ##         Two selections: {kmeans}, {mclust}.
+                                                        ##         Two selections: {kmeans}, {mclust}.
                      BASS_geneSelect = "sparkx",        ## String: feature selection method: spatial gene {sparkx} or
-                     ##         high variable gene {hvgs}.
+                                                        ##         high variable gene {hvgs}.
                      Annot_species = "Human",           ## String: species: {Human} and {Mouse}                 
                      Annot_status = NULL,               ## String: status
                      out_path                           ## String: output path for ct procedure
@@ -69,7 +70,7 @@ ct.check <- function(data_path,                         ## String: output path o
     
     stop("Please run the QC module!")
   }
-  
+
   ## Output the first method: CT_PCA-Seurat
   if (ct_methods == "CT_PCA-Seurat"){
     
@@ -96,10 +97,10 @@ ct.check <- function(data_path,                         ## String: output path o
                   row.names = F, col.names = F, quote = F)
     }
   }
-  
+    
   ## Output the second method: CL_jo-BASS
   if (ct_methods == "CL_jo-BASS"){
-    
+
     ## output
     write.table(c(ct_methods, 
                   BASS_cellNum, BASS_domainNum,
@@ -111,7 +112,7 @@ ct.check <- function(data_path,                         ## String: output path o
   ## Output the second method: CT_Annot-scSorter
   if (ct_methods == "CT_Annot-scSorter"){
     
-    marker_file <- paste0(ref_path, "/", Annot_species, "/",
+    marker_file <- paste0(refer_path, "/", Annot_species, "/",
                           Annot_status, "/marker.csv")
     write.table(c(ct_methods, marker_file),
                 file = paste0(out_path, "/ct_check_file.txt"), 
@@ -121,7 +122,7 @@ ct.check <- function(data_path,                         ## String: output path o
   ## Output the second method: CT_Annot-Garnett
   if (ct_methods == "CT_Annot-Garnett"){
     
-    marker_file <- paste0(ref_path, "/", Annot_species, "/",
+    marker_file <- paste0(refer_path, "/", Annot_species, "/",
                           Annot_status, "/marker.txt")
     write.table(c(ct_methods, marker_file, Annot_species),
                 file = paste0(out_path, "/ct_check_file.txt"), 
@@ -225,6 +226,7 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
     strsplit(",") %>% unlist %>% as.numeric
   
   ### two and more samples
+  batch <- "NA"
   if(sample_size != 1){
     
     batch <- check_file[3]
@@ -240,7 +242,7 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
   pc_list <- list()
   umap_list <- list()
   ## one sample or merge data
-  if(sample_size == 1 | batch == "Merge"){
+  if (sample_size == 1 | (sample_size != 1 & batch == "Merge")){
     
     if (sample_size == 1){
       
@@ -262,8 +264,6 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
       seurat_obj <- ScaleData(seurat_obj,
                               features = featureID,
                               verbose = FALSE)
-      # seurat_obj <- ScaleData(seurat_obj)
-      cat("3\n")
     }
     ## Dimensional reduction
     ### PCA
@@ -307,10 +307,10 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
     umap_list[["cluster"]]  <- Embeddings(seurat_obj[["umap"]]) %>% as.data.frame()
     
     # Save seurat object
-    SaveH5Seurat(seurat_obj, 
-                 filename = paste0(out_path, "/ct_pca_seurat_obj.h5Seurat"), 
-                 overwrite = TRUE)
-    
+    # SaveH5Seurat(seurat_obj, 
+    #              filename = paste0(out_path, "/ct_pca_seurat_obj.h5Seurat"), 
+    #              overwrite = TRUE)
+    save(seurat_obj, file = paste0(out_path, "/ct_pca_seurat_obj.RData"))
   } else {
     
     clust_list <- list()
@@ -377,9 +377,10 @@ Seurat.call.func <- function(st_list,                   ## String: output path o
                                            colnames(seurat_obj))
         
         ## Save seurat object
-        SaveH5Seurat(seurat_obj, 
-                     filename = paste0(out_path, "/ct_pca_seurat_obj_anchor", anchor, "_dim", dim, ".h5Seurat"), 
-                     overwrite = TRUE)
+        # SaveH5Seurat(seurat_obj, 
+        #              filename = paste0(out_path, "/ct_pca_seurat_obj_anchor", anchor, "_dim", dim, ".h5Seurat"), 
+        #              overwrite = TRUE)
+        save(seurat_obj, file = paste0(out_path, "/ct_pca_seurat_obj_anchor", anchor, "_dim", dim, ".RData"))
       }
     }
     clust <- Reduce("cbind", clust_list)
@@ -520,16 +521,24 @@ scSorter.call.func <- function(st_list,                 ## String: output path o
   rts <- scSorter::scSorter(expr, markers_sel)
   cell_type <- rts$Pred_Type
   ## Output
-  cell_type_dat <- cbind(colnames(count_dat), cell_type)
-  ## output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
     
     system(paste0("mkdir ", result_dir))
   }
-  clust_outpath <- paste0(result_dir, "/ct_annot_scsorter_cluster.txt")
+  clust_file <- paste0(result_dir, "/ct_annot_scsorter_cluster.txt")
+  sample_num <- strsplit(colnames(count_dat), "_") %>%
+    llply(., function(a){
+      sub("sample", "", a[1])
+    }) %>% unlist
+  cell_type_dat <- data.frame(sample = sample_num, 
+                              cell = colnames(count_dat), 
+                              cluster = cell_type)
   write.table(cell_type_dat, 
-              file = clust_outpath,
+              file = clust_file,
+              quote = F, row.names = F)
+  write.table(clust_file, 
+              file = paste0(out_path, "/ct_post_file.txt"),
               quote = F, row.names = F, col.names = F)
   return(0)
 }
@@ -594,30 +603,38 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
                              cluster_extend = TRUE,
                              cds_gene_id_type = "SYMBOL")
   }
-  
+
   ## Output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
     
     system(paste0("mkdir ", result_dir))
   }
-  clust_outpath <- paste0(result_dir, "/ct_annot_garnett_cluster.txt")
-  cell_type_dat <- cbind(colnames(count_dat), 
-                         pData(sc_cds)$cluster_ext_type)
+  clust_file <- paste0(result_dir, "/ct_annot_garnett_cluster.txt")
+  sample_num <- strsplit(colnames(count_dat), "_") %>%
+    llply(., function(a){
+      sub("sample", "", a[1])
+    }) %>% unlist
+  cell_type_dat <- data.frame(sample = sample_num, 
+                              cell = colnames(count_dat), 
+                              cluster = pData(sc_cds)$cluster_ext_type)
   write.table(cell_type_dat, 
-              file = clust_outpath,
+              file = clust_file,
+              quote = F, row.names = F)
+  write.table(clust_file, 
+              file = paste0(out_path, "/ct_post_file.txt"),
               quote = F, row.names = F, col.names = F)
   return(0)
 }
 
 # Function 6: ct.call
-ct.call <- function(data_path1,                         ## String: output path of qc procedure
-                    data_path2                          ## String: output path of ct procedure
+ct.call <- function(data_path,                         ## String: output path of qc procedure
+                    out_path                          ## String: output path of ct procedure
 ){
   
   ## Load st data
   source(paste0(method_path, "/io.R"))
-  call_file <- paste0(data_path1, "/qc_call_file.txt")
+  call_file <- paste0(data_path, "/qc_call_file.txt")
   qc_param <- read.table(call_file)[, 1]
   spatial_data_filename <- qc_param[1]
   sample_size <- qc_param[2] %>% as.numeric
@@ -627,26 +644,26 @@ ct.call <- function(data_path1,                         ## String: output path o
                          normalization = FALSE, 
                          load_coord = TRUE) 
   ## Load ct check file
-  check_file <- paste0(data_path2, "/ct_check_file.txt")
+  check_file <- paste0(out_path, "/ct_check_file.txt")
   ct_param <- read.table(check_file)[, 1]
   ct_methods <- ct_param[1]
   
   ## Choose different ct methods
   if (ct_methods == "CT_PCA-Seurat"){
     
-    ct_result <- Seurat.call.func(st_list, data_path2)
+    ct_result <- Seurat.call.func(st_list, out_path)
   }
   if (ct_methods == "CL_jo-BASS"){
     
-    ct_result <- BASS.call.func(st_list, data_path2)
+    ct_result <- BASS.call.func(st_list, out_path)
   }
   if (ct_methods == "CT_Annot-scSorter"){
     
-    ct_result <- scSorter.call.func(st_list, data_path2)
+    ct_result <- scSorter.call.func(st_list, out_path)
   }
   if (ct_methods == "CT_Annot-Garnett"){
     
-    ct_result <- Garnett.call.func(TRUE, st_list, data_path2)
+    ct_result <- Garnett.call.func(TRUE, st_list, out_path)
   }
   return(0)
 }
@@ -681,7 +698,7 @@ Seurat.post.func <- function(data_path,                 ## String: output path o
   ## output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
-    
+
     system(paste0("mkdir ", result_dir))
   }
   ### get annotation
@@ -752,11 +769,15 @@ ct.post <- function(data_path,                          ## String: output path o
   if (ct_methods == "CT_PCA-Seurat"){
     
     ct_result <- Seurat.post.func(data_path, out_path)
+    return(0)
   }
   if (ct_methods == "CL_jo-BASS"){
     
     ct_result <- BASS.post.func(out_path)
+    return(0)
   }
-  
-  return(0)
+  if (ct_methods %in% c("CT_Annot-Garnett", "CT_Annot-scSorter")){
+    
+    return(0)
+  }
 }
