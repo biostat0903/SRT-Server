@@ -2,11 +2,11 @@
 # visualize UMAP and location plot after using seurat analysis
 # up-stream code: dr_cl.R
 
-library(dplyr)
-library(bigreadr)
+# Load pacakges
 library(ggplot2)
-library(hdf5r)
-library(glue)
+library(dplyr)
+library(plyr)
+library(bigreadr)
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
@@ -233,6 +233,61 @@ BASS.plot.func <- function(data_path1,                                ## String:
   return(0)
 }
 
+# Function 5
+Annot.plot.func <- function(data_path1,                                ## String: output path for ct procedure
+                            data_path2,                                ## String: output path for qc procedure
+                            out_path,                                  ## String: output path for ct procedure
+                            ft_marker_gene_list = NULL,
+                            ft_marker_num,
+                            bb_marker_gene_list = NULL,
+                            bb_marker_num,
+                            out_figures,                               ## Boolean: output figure
+                            zip_figures
+){
+  
+  source(paste0(method_path, "/plt_utils.R"))
+  result_dir <- paste0(out_path, "/ct_result")
+  if (!file.exists(result_dir)){
+    
+    system(paste0("mkdir ", result_dir))
+  }
+  loc_plt1 <- loc.plot(data_path1 = data_path1, 
+                       data_path2 = data_path2, 
+                       mode_usage = "ct", 
+                       out_path = out_path, 
+                       vis_type = "cell_type",
+                       out_figure = out_figures, 
+                       zip_figure = zip_figures)
+  if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
+    
+    ft_marker_num <- NULL
+  }
+  ft_plt <- feature.plot(data_path1 = data_path1,
+                         data_path2 = data_path2,
+                         mode_usage = "ct",
+                         marker_gene_list = ft_marker_gene_list,
+                         marker_num = ft_marker_num,
+                         out_path = out_path,
+                         out_figure = out_figures, 
+                         zip_figure = zip_figures)
+  if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
+    
+    bb_marker_num <- NULL
+  }
+  bb_plt <- bubble.plot(data_path1 = data_path1,
+                        data_path2 = data_path2,
+                        mode_usage = "ct",
+                        marker_gene_list = bb_marker_gene_list,
+                        marker_num = bb_marker_num,
+                        out_path = out_path,
+                        out_figure = out_figures, 
+                        zip_figure = zip_figures)
+  save(loc_plt1, ft_plt, bb_plt, 
+       file = paste0(out_path, "/ct_result/plot.RData"))
+  
+  return(0)
+}
+
 # Function 6
 ct_plt.plot <- function(data_path1,                                ## String: output path for ct procedure
                         data_path2,                                ## String: output path for qc procedure
@@ -273,6 +328,19 @@ ct_plt.plot <- function(data_path1,                                ## String: ou
                                 bb_marker_num,
                                 out_figures, 
                                 zip_figures)
+  }
+  
+  if (ct_methods %in% c("CT_Annot-Garnett", "CT_Annot-scSorter")){
+    
+    ct_result <- Annot.plot.func(data_path1,          
+                                 data_path2,          
+                                 out_path,            
+                                 ft_marker_gene_list,
+                                 ft_marker_num,
+                                 bb_marker_gene_list,
+                                 bb_marker_num,
+                                 out_figures, 
+                                 zip_figures)
   }
   
   return(0)
