@@ -1,7 +1,7 @@
 #! /usr/bin/env Rscript
 # Identify differentially expressed gene in st data
 # up-stream code: ct.R, sdd.R
-# down-stream code: de_plt.R
+# down-stream code: de_plt.R, ora.R
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
@@ -41,7 +41,7 @@ de.check <- function(data_path1 = NULL,                 ## String: output path o
     sample_size <- qc_param[2]
   }
   ## Set cell typing module parameters
-  if(grepl("CT", submodule)) {
+  if(grepl("CT", submodule) & submodule != "CT_Annot") {
     
     if (methods == "Seurat"){
       
@@ -66,13 +66,17 @@ de.check <- function(data_path1 = NULL,                 ## String: output path o
     if(file.exists(paste0(data_path1, "/ct_post_file.txt"))){
       
       post_file <- read.table(paste0(data_path1, "/ct_post_file.txt"))[,1]
+      check_file <- c(spatial_data_filename, submodule, methods,
+                      sample_size, grid_use, de_method, 
+                      post_file[1], "ct")
     } else {
       
       post_file <- read.table(paste0(data_path1, "/sdd_post_file.txt"))[,1]
+      check_file <- c(spatial_data_filename, submodule, methods,
+                      sample_size, grid_use, de_method, 
+                      post_file[1], "sdd")
     }
-    check_file <- c(spatial_data_filename, submodule, methods,
-                    sample_size, grid_use, de_method, 
-                    post_file[1], post_file[2])
+    
   }
   
   ## Set spatial domain detection modules
@@ -86,6 +90,16 @@ de.check <- function(data_path1 = NULL,                 ## String: output path o
     check_file <- c(spatial_data_filename, submodule, methods,
                     sample_size, grid_use, de_method, 
                     post_file[2])
+  }  
+  
+  ## Set annotation-based modules
+  if(submodule == "CT_Annot"){
+    
+    grid_use <- "cluster"
+    post_file <- read.table(paste0(data_path1, "/ct_post_file.txt"))[,1]
+    check_file <- c(spatial_data_filename, submodule, methods,
+                    sample_size, grid_use, de_method, 
+                    post_file[1])
   }  
   
   ## output file
@@ -155,16 +169,22 @@ de.call <- function(out_path                ## String: output path of de procedu
   }
   if(grepl("jo", submodule)) {
     
-    ct_df <- fread2(check_file[7])
-    ct_markers <- de.func(st_list, ct_df, grid_use, de_method)
-    sdd_df <- fread2(check_file[8])
-    sdd_markers <- de.func(st_list, sdd_df, grid_use, de_method)
-    save(ct_markers, sdd_markers, file = result_file)
-    save(ct_df,sdd_df, file = clus_file)
+    if(check_file[8] == "ct"){
+      
+      ct_df <- fread2(check_file[7])
+      ct_markers <- de.func(st_list, ct_df, grid_use, de_method)
+      save(ct_markers, file = result_file)
+      save(ct_df, file = clus_file)
+    } else {
+      
+      sdd_df <- fread2(check_file[8])
+      sdd_markers <- de.func(st_list, sdd_df, grid_use, de_method)
+      save(ct_markers, file = result_file)
+      save(ct_df, file = clus_file)
+    }
   }
   if(grepl("SDD", submodule)) {
-
-    cat(check_file[7], "\n")
+    
     sdd_df <- fread2(check_file[7])
     sdd_markers <- de.func(st_list, sdd_df, grid_use, de_method)
     save(sdd_markers, file = result_file)
@@ -223,21 +243,3 @@ de.post <- function(out_path
               col.names = F, row.names = F, quote = F)
   return(0)
 }
-
-
-# ###################
-# ### test code
-# data_path1 <- "/pt_data/494433291@qq.com/9c6bd77f682d4ac294f6584f1b99a412/tools-output/wf-482574736442786368/job-SDD-482574938289472064"
-# data_path2 <- "/pt_data/494433291@qq.com/9c6bd77f682d4ac294f6584f1b99a412/tools-output/wf-482574736442786368/job-QC-482574761998680640"
-# output_path <- "/pt_data/494433291@qq.com/9c6bd77f682d4ac294f6584f1b99a412/tools-output/wf-482574736442786368/job-DE-482577840986915392"
-# de.check (data_path1 = data_path1,
-#           data_path2 = data_path2,
-#           submodule = "SDD_sPCA",
-#           methods = "SpatialPCA",
-#           SpatialPCA_domainNum = 3,
-#           BASS_cellNum = 6,
-#           de_method = "wilcox",
-#           out_path = output_path)
-# de.call(out_path = output_path)
-# de.post(out_path = output_path)
-
