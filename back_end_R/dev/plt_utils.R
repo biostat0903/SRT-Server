@@ -3,7 +3,7 @@
 # up-stream code: dr_cl.R, dr_cl_sp.R, dr_cl_wrapping.R
 
 # Set method_path
-method_path <- "/script/dev"
+method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
 
 # Load packages
 library(Seurat)
@@ -94,7 +94,8 @@ feature.plot <- function(data_path1,                   ## String: output path of
                          marker_gene_list = NULL, 
                          marker_num = NULL,
                          out_path, 
-                         out_figure = FALSE
+                         out_figure = FALSE, 
+                         zip_figure = FALSE
 ){
 
   ## load io code
@@ -187,14 +188,13 @@ feature.plot <- function(data_path1,                   ## String: output path of
     # ft_ht <- ceiling(sample_size/8)*1.5 + 0.5
     ft_ht <- floor(length(marker_gene_sel[[1]]) / 4)*sample_size*1.5
     ft_wt <- min(4, length(marker_gene_sel[[1]]))
-    # cat("marker_gene_sel[[1]]:", marker_gene_sel[[1]], "\n")
-    # cat("length(marker_gene_sel[[1]]):", length(marker_gene_sel[[1]]), "\n")
-    # cat("ft_ht:", ft_ht, "\n")
-    # cat("ft_wt:", ft_wt, "\n")
     ggsave(filename = paste0(result_dir, "/Feature_plt.tiff"), 
            plot = ft_plt,
            height = ft_ht, width = ft_wt, units = "in", dpi = 300)
-    # system(paste0("gzip -f ", result_dir, "/Feature_plt.tiff"))
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", result_dir, "/Feature_plt.tiff"))
+    }
   }
   
   return(ft_plt)
@@ -296,7 +296,8 @@ bubble.plot <- function(data_path1,                   ## String: output path of 
                         marker_num = NULL, 
                         do_scale = TRUE,
                         out_path, 
-                        out_figure = FALSE
+                        out_figure = FALSE,
+                        zip_figure = FALSE
 ){
   
   ## Load io code
@@ -411,7 +412,11 @@ bubble.plot <- function(data_path1,                   ## String: output path of 
     ggsave(filename = paste0(result_dir, "/Bubble_plt.tiff"), 
            plot = bb_plt,
            height = bb_ht, width = bb_wt, units = "in", dpi = 300)
-    # system(paste0("gzip -f ", result_dir, "/Bubble_plt.tiff"))
+    if(zip_figure == TRUE){
+    
+      system(paste0("gzip -f ", result_dir, "/Bubble_plt.tiff"))  
+    }
+    
   }
   
   return(bb_plt)
@@ -445,7 +450,6 @@ loc.visualize <- function(datt,
     
     plt <- plt + scale_color_manual("Domains", values = color_in)
   }
-  
   
   return(plt)
 }
@@ -483,7 +487,8 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
                      mode_usage = NULL,            ## String: "dr_cl", "dr_cl_wrapping", "dr_cl_sp"
                      vis_type = "cell_type",       ## String: "cell_type", "spatial_domain"
                      out_path,                     ## String: output path of dr_cl procedure 
-                     out_figure = FALSE            ## Boolean: output figure
+                     out_figure = FALSE,           ## Boolean: output figure
+                     zip_figure = FALSE
 ){
   
   ## load io code
@@ -543,7 +548,10 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
       ggsave(filename = loc_name, plot = ct_loc_plt,
              height = plt_ht+1, width = plt_wt, units = "in",
              dpi = 300)
-      # system(paste0("gzip -f ", loc_name))
+      if(zip_figure == TRUE){
+        
+        system(paste0("gzip -f ", loc_name))  
+      }
     }
   })
   return(ct_loc_list)
