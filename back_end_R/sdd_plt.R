@@ -97,22 +97,3 @@ sdd_plt.plot <- function(data_path1,                                ## String: o
   
   return(0)
 }
-
-# ###################
-# ### test code
-# data_path1 <- "/pt_data/494433291@qq.com/c8ab46c7beb047628f0926ea5f14bfbe/tools-output/wf-483658348688835136/job-SDD-483658605204079168"
-# data_path2 <- "/pt_data/494433291@qq.com/c8ab46c7beb047628f0926ea5f14bfbe/tools-output/wf-483658348688835136/job-QC-483658374353781312"
-# out_path <- "/pt_data/494433291@qq.com/c8ab46c7beb047628f0926ea5f14bfbe/tools-output/wf-483658348688835136/job-SDD_PLT-483678820474290752"
-# marker_gene_list = NULL
-# marker_num = 4
-# bb_marker_gene_list = NULL
-# bb_marker_num = 10
-# out_figures = TRUE
-# sdd_plt.plot(data_path1 = data_path1,
-#                   data_path2 = data_path2,
-#                   out_path = output_path,
-#                   ft_marker_gene_list = NULL,
-#                   ft_marker_num = 4,
-#                   bb_marker_gene_list = NULL,
-#                   bb_marker_num = 10,
-#                   out_figures = TRUE)
