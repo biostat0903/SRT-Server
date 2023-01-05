@@ -1,5 +1,5 @@
 #! /usr/bin/env Rscript
-# Perform over representative analysis
+# Perform over representation analysis
 # up-stream procedure: de.R, svg.R
 # down-stream procedure: ora_plt.R
 
@@ -30,12 +30,12 @@ ora.check <- function(data_path1 = NULL,              ## String: data path of sv
   gene_sig <- ifelse(read.table(post_file)[1, 1] == "0", 
                      read.table(post_file)[2, 1],
                      read.table(post_file)[1, 1])
-
+  
   ## output
-  write.table(c(gene_sig, species, pathway_db), 
+  write.table(c(gene_sig, species, pathway_db, method), 
               file = paste0(out_path, "/ora_check_file.txt"), 
               row.names = F, quote = F, col.names = F)
-
+  
   return(0)
 }
 
@@ -51,7 +51,7 @@ ora.call <- function(out_path
     gene_dat <- gene_dat[gene_dat$p_adj < 0.05, 1] %>% unique()
   }
   pathway_db <- check_file[3]
-
+  
   ## transfer gene name
   if(check_file[2] == "Mouse"){
     
@@ -156,16 +156,19 @@ ora.post <- function(out_path
   
   ## load
   load(paste0(out_path, "/ora_call_result.RData"))
-  ora_res_sig <- ora_res[ora_res$p.adjust < 0.05, ]
-  
+  check_file <- read.table(paste0(out_path, "/ora_check_file.txt"))[, 1]
+  method <- check_file[4]
   ## output
   result_dir <- paste0(out_path, "/ora_result")
   if (!file.exists(result_dir)) {
     
     system(paste0("mkdir -p ", result_dir))
   }
-  write.csv(ora_res_sig, file = paste0(result_dir, "/ora_sig.csv"), 
-            row.names = F, quote = F)
-  
+  write.table(ora_res, 
+              file = paste0(result_dir, "/ora_pathway_", method, ".txt"), 
+              row.names = F, quote = F, sep = "\t")
+  write.table(paste0(result_dir, "/ora_pathway_", method, ".txt"), 
+              file = paste0(out_path, "/ora_post_file.txt"), 
+              row.names = F, quote = F, col.names = F)
   return(0)
 }
