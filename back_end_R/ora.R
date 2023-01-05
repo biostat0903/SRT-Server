@@ -87,8 +87,8 @@ ora.call <- function(out_path
     
     species_str <- ifelse(check_file[2] == "Mouse", 
                           "Mus musculus", "Homo sapiens")
-    ora_res_Wiki <- enrichWP(gene = gene_id[, 2], 
-                             organism = species_str)
+    ora_res_WikiPathways <- enrichWP(gene = gene_id[, 2], 
+                                     organism = species_str)
   }
   ## Reactome pathway analysis
   if (pathway_db == "Reactome" | pathway_db == "ALL"){
@@ -126,8 +126,8 @@ ora.call <- function(out_path
     ora_res_Reactome <- ora_res_Reactome@result
     ora_res_Reactome$PathwayInfo <- "Reactome"
     ### WikiPathways
-    ora_res_Wiki <- ora_res_Wiki@result
-    ora_res_Wiki$PathwayInfo <- "WikiPathways"
+    ora_res_WikiPathways <- ora_res_WikiPathways@result
+    ora_res_WikiPathways$PathwayInfo <- "WikiPathways"
     ### DO
     if (!is.null(ora_res_DO)){
       
