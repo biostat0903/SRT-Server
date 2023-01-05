@@ -1,125 +1,177 @@
 #! /usr/bin/env Rscript
-# visualize  and bubble plot after ora
-# up-stream code: ora.R
+# Perform over representation analysis
+# up-stream procedure: de.R, svg.R
+# down-stream procedure: ora_plt.R
 
-# Load packages
-library(ggplot2)
+# Load packages 
 library(clusterProfiler)
+library(ReactomePA)
+library(DOSE)
+library(org.Mm.eg.db)
+library(org.Hs.eg.db)
+library(dplyr)
+library(tibble)
+library(Matrix)
+library(bigreadr)
 
-# Function 1: 
-bubble.process <- function(data_path
+# Function 1: gsea check
+ora.check <- function(data_path1 = NULL,              ## String: data path of svg
+                      data_path2 = NULL,              ## String: data path of de
+                      method = "svg",                 ## String: up-stream methods, including svg and de
+                      species = "Mouse",              ## String: species to analysis, including"Human" or "Mouse" (required)******
+                      pathway_db = NULL,              ## String: pathway databases, {Go}
+                      out_path = NULL                 ## String: output path of ora procedure
 ){
   
-  ## load ora file
-  post_file <- read.table(paste0(data_path, "/ora_post_file.txt"))[,1]
-  ora_mat <- bigreadr::fread2(post_file[1])
-  ora_datt <- data.frame(IDNum = c(1: nrow(ora_mat)), 
-                         Log_p = log10(ora_mat$pvalue), 
-                         Category = ora_mat$PathwayInfo,
-                         Count = ora_mat$Count)
-  return(ora_datt)
-}
-
-# Function 2: 
-bubble.visualize <- function(datt
-){
+  ## check 
+  post_file <- ifelse(method == "svg", 
+                      paste0(data_path1, "/svg_post_file.txt"), 
+                      paste0(data_path2, "/de_post_file.txt"))
+  gene_sig <- ifelse(read.table(post_file)[1, 1] == "0", 
+                     read.table(post_file)[2, 1],
+                     read.table(post_file)[1, 1])
   
-  plt <- ggplot(datt, aes(x = IDNum, y = Log_p, color = Category))+
-    geom_point(shape = 19,aes(fill = Category, size = Count, shape = 19),alpha=0.8)+
-    scale_radius()+
-    labs(x = "", y = expression(paste(bold(-log[10]),bold("("),bolditalic(p),bold("-value)"))))+
-    theme(axis.text.x=element_blank(),
-          plot.title = element_text(lineheight=.8, face="bold"),
-          axis.text = element_text(size = 30),
-          axis.line = element_line(colour = 'black'),
-          axis.ticks = element_line(colour = 'grey80'),
-          axis.title = element_text(size = 40, face = 'bold'),
-          axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          legend.title=element_text(size=24,face = 'bold'),
-          legend.text=element_text(size=24),
-          panel.background = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.grid.major = element_line(colour = 'white'),
-          plot.background = element_blank(),
-          legend.key = element_rect(color = "transparent", fill = "transparent"))+
-    geom_hline(yintercept = 1.82, col = 'black',linetype = 2,size=2)+
-    guides(color = guide_legend(order = 1,override.aes = list(alpha = 1,size=7)),
-           size = guide_legend(order = 2,override.aes = list(alpha = 1,shape=21)),
-           fill = FALSE)+ labs(size = "Gene set size")+
-    scale_color_manual(values=c("salmon","gold2","#42d4f4","#3cb44b","chocolate2","#4363d8","#bfef45","#911eb4","#f032e6","#a9a9a9"))+
-    scale_fill_manual(values = c("salmon","gold2","#42d4f4","#3cb44b","chocolate2","#4363d8","#bfef45","#911eb4","#f032e6","#a9a9a9"))+
-    theme(legend.direction = "vertical")+
-    theme(legend.position = c(0.30, 0.85))+
-    theme(legend.box = "horizontal")+
-    theme(legend.title.align = 0)
+  ## output
+  write.table(c(gene_sig, species, pathway_db, method), 
+              file = paste0(out_path, "/ora_check_file.txt"), 
+              row.names = F, quote = F, col.names = F)
   
-  return(plt)
-}
-
-# Function 3: Visualize bubble plot after data process
-bubble.plt <- function(data_path,                  ## String: output path of ora procedure
-                       out_path,                   ## String: output path of ora_plt procedure
-                       out_figure, 
-                       zip_figure = FALSE
-){
-  
-  bubble_datt <- bubble.process(data_path)
-  bubble_plt <- bubble.visualize(bubble_datt)
-  
-  ## Output
-  if(out_figure == TRUE){
-    
-    ggsave(filename = paste0(out_path, "/ora_result/Bubble_plot.tiff"), 
-           plot = bubble_plt, height = 6, width = 3,
-           units = "in", dpi = 300)
-    if(zip_figure == TRUE){
-      
-      system(paste0("gzip -f ", out_path, 
-                    "/ora_result/Bubble_plot.tiff"))
-    }
-  }
   return(0)
 }
 
-# Function 4: ora_plt.plot
-ora_plt.plot <- function(data_path,                ## String: output path of ora procedure
-                         out_path,                 ## String: output path of ora_plt procedure
-                         out_figures, 
-                         zip_figures
+# Function 2: ora call function
+ora.call <- function(out_path
 ){
   
-  ## Load file
-  check_file <- read.table(paste0(data_path, "/ora_check_file.txt"))[, 1]
-  pathway_db <- check_file[3]
-  call_file <- read.table(paste0(out_path, "/ora_call_file.txt"))[, 1]
-  
-  ## plot
-  result_dir <- paste0(out_path, "/ora_result")
-  if (!file.exists(result_dir)){
+  ## load
+  check_file <- read.table(paste0(out_path, "/ora_check_file.txt"))[, 1]
+  gene_dat <- fread2(check_file[1])
+  if(ncol(gene_dat) > 1){
     
-    system(paste0("mkdir ", result_dir))
-  }
-  bubble_plt <- dot_plt <- NULL
-  if (pathway_db == "ALL"){
-    
-    bubble_plt <- bubble.plt(data_path = data_path, 
-                             out_path = out_path, 
-                             out_figure = out_figures, 
-                             zip_figure = zip_figures)
+    gene_dat <- gene_dat[gene_dat$p_adj < 0.05, 1] %>% unique()
   } else {
     
-    load(call_file[1])
-    dot_plt <- dotplot(ora_res, showCategory = 10)
-    if(out_figures == TRUE){
+    gene_dat <- gene_dat[, 1]
+  }
+  pathway_db <- check_file[3]
+  
+  ## transfer gene name
+  if(check_file[2] == "Mouse"){
+    
+    species_db <- org.Mm.eg.db
+  }else{
+    
+    species_db <- org.Hs.eg.db
+  }
+  gene_id <- bitr(gene_dat, fromType = "SYMBOL",
+                  toType = c("ENTREZID"),
+                  OrgDb = org.Mm.eg.db)
+  ## GO analysis
+  if (pathway_db == "GO" | pathway_db == "ALL"){
+    
+    ora_res_GO <- enrichGO(gene = gene_id[, 1],
+                           keyType = 'SYMBOL',
+                           OrgDb = species_db,
+                           ont = "ALL",
+                           pAdjustMethod = "BH",
+                           pvalueCutoff  = 1,
+                           readable = TRUE)
+  }
+  ## KEGG analysis
+  if (pathway_db == "KEGG" | pathway_db == "ALL"){
+    
+    species_str <- ifelse(check_file[2] == "Mouse", "mmu", "hsa")
+    ora_res_KEGG <- enrichKEGG(gene = gene_id[, 2],
+                               organism = species_str,
+                               keyType = "ncbi-geneid",
+                               pvalueCutoff = 1)
+  }
+  ## WikiPathways analysis
+  if (pathway_db == "WikiPathways" | pathway_db == "ALL"){
+    
+    species_str <- ifelse(check_file[2] == "Mouse", 
+                          "Mus musculus", "Homo sapiens")
+    ora_res_WikiPathways <- enrichWP(gene = gene_id[, 2], 
+                                     organism = species_str)
+  }
+  ## Reactome pathway analysis
+  if (pathway_db == "Reactome" | pathway_db == "ALL"){
+    
+    species_str <- ifelse(check_file[2] == "Mouse", 
+                          "mouse", "human")
+    ora_res_Reactome <- enrichPathway(gene = gene_id[, 2], 
+                                      organism = species_str,
+                                      readable = TRUE)
+  }
+  ## Disease Oncology pathway analysis
+  ora_res_DO <- NULL
+  if (check_file[2] == "Human"){
+    
+    if (pathway_db == "DO" | pathway_db == "ALL"){
       
-      tiff(dot_plt, file = paste0(out_path, ))
+      ora_res_DO <- enrichDO(gene = gene_id[, 2], 
+                             readable = TRUE)
+      ora_res_DO$PathwayInfo <- "DO"
     }
   }
-  
-  ## save plot data
-  save(bubble_plt, dot_plt, 
-       file = paste0(out_path, "/ora_result/ora_plot.RData"))
-  
+  ## ALL pathway summary
+  if(pathway_db == "ALL"){
+    
+    ### GO 
+    ora_res_GO <- ora_res_GO@result
+    db_info <- ifelse(ora_res_GO$ONTOLOGY == "BP", "GO Biological Process", 
+                      ifelse(ora_res_GO$ONTOLOGY == "CC", "GO Cell Component", "GO Molecular Function"))
+    ora_res_GO$ONTOLOGY <- NULL
+    ora_res_GO$PathwayInfo <- db_info
+    ### KEGG
+    ora_res_KEGG <- ora_res_KEGG@result
+    ora_res_KEGG$PathwayInfo <- "KEGG"
+    ### Reactome
+    ora_res_Reactome <- ora_res_Reactome@result
+    ora_res_Reactome$PathwayInfo <- "Reactome"
+    ### WikiPathways
+    ora_res_WikiPathways <- ora_res_WikiPathways@result
+    ora_res_WikiPathways$PathwayInfo <- "WikiPathways"
+    ### DO
+    if (!is.null(ora_res_DO)){
+      
+      ora_res_DO <- ora_res_DO@result
+      ora_res_DO$PathwayInfo <- "WikiPathways"
+    }
+    
+    ora_res <- rbind(ora_res_GO, ora_res_KEGG, ora_res_WikiPathways, 
+                     ora_res_Reactome, ora_res_DO)
+  } else {
+    
+    ora_res <- eval(parse(text = paste0("ora_res_", pathway_db)))
+  }
+  ## output
+  save(ora_res, file = paste0(out_path, "/ora_call_result.RData"))
+  write.table(paste0(out_path, "/ora_call_result.RData"), 
+              file = paste0(out_path, "/ora_call_file.txt"), 
+              row.names = F, col.names = F, quote = F)
   return(0)
 }
 
+# Function 3: ora post file
+ora.post <- function(out_path
+){
+  
+  ## load
+  load(paste0(out_path, "/ora_call_result.RData"))
+  check_file <- read.table(paste0(out_path, "/ora_check_file.txt"))[, 1]
+  method <- check_file[4]
+  ## output
+  result_dir <- paste0(out_path, "/ora_result")
+  if (!file.exists(result_dir)) {
+    
+    system(paste0("mkdir -p ", result_dir))
+  }
+  write.table(ora_res, 
+              file = paste0(result_dir, "/ora_pathway_", method, ".txt"), 
+              row.names = F, quote = F, sep = "\t")
+  write.table(paste0(result_dir, "/ora_pathway_", method, ".txt"), 
+              file = paste0(out_path, "/ora_post_file.txt"), 
+              row.names = F, quote = F, col.names = F)
+  return(0)
+}
