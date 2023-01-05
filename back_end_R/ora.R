@@ -26,7 +26,9 @@ ora.check <- function(data_path1 = NULL,              ## String: data path of sv
   post_file <- ifelse(method == "svg", 
                       paste0(data_path1, "/svg_post_file.txt"), 
                       paste0(data_path2, "/de_post_file.txt"))
-  gene_sig <- read.table(post_file)[1, 1]
+  gene_sig <- ifelse(read.table(post_file)[1, 1] == "0", 
+                     read.table(post_file)[2, 1],
+                     read.table(post_file)[1, 1])
 
   ## output
   write.table(c(gene_sig, species, pathway_db), 
@@ -42,7 +44,11 @@ ora.call <- function(out_path
   
   ## load
   check_file <- read.table(paste0(out_path, "/ora_check_file.txt"))[, 1]
-  gene_dat <- fread2(check_file[1])[, 1]
+  gene_dat <- fread2(check_file[1])
+  if(ncol(gene_dat) > 1){
+    
+    gene_dat <- gene_dat[gene_dat$p_adj < 0.05, 1] %>% unique()
+  }
   pathway_db <- check_file[3]
 
   ## transfer gene name
