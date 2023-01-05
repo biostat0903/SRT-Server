@@ -113,17 +113,17 @@ ora_plt.plot <- function(data_path,                ## String: output path of ora
     
     load(call_file[1])
     dot_plt <- dotplot(ora_res, showCategory = 10)
-    cat("ok\n")
     if(out_figures == TRUE){
       
       tiff(filename = paste0(result_dir, "/dotplt_", pathway_db, ".tiff"), 
            width = 4, height = 4, units = "in", res = 300)
+      cat("ok\n")
       dot_plt
       dev.off()
-      # if(zip_figures == TRUE){
-      #   
-      #   system(paste0("gzip -f ", result_dir, "/dotplt_", pathway_db, ".tiff"))
-      # }
+      if(zip_figures == TRUE){
+
+        system(paste0("gzip -f ", result_dir, "/dotplt_", pathway_db, ".tiff"))
+      }
     }
   }
   
