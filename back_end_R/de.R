@@ -177,7 +177,7 @@ de.call <- function(out_path                ## String: output path of de procedu
       save(ct_df, file = clus_file)
     } else {
       
-      sdd_df <- fread2(check_file[8])
+      sdd_df <- fread2(check_file[7])
       sdd_markers <- de.func(st_list, sdd_df, grid_use, de_method)
       save(ct_markers, file = result_file)
       save(ct_df, file = clus_file)
