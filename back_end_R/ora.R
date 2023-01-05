@@ -144,7 +144,7 @@ ora.call <- function(out_path
   }
   ## output
   save(ora_res, file = paste0(out_path, "/ora_call_result.RData"))
-  write.table(paste0(output_path, "/ora_call_result.RData"), 
+  write.table(paste0(out_path, "/ora_call_result.RData"), 
               file = paste0(out_path, "/ora_call_file.txt"), 
               row.names = F, col.names = F, quote = F)
   return(0)
@@ -155,7 +155,7 @@ ora.post <- function(out_path
 ){
   
   ## load
-  load(paste0(output_path, "/ora_call_result.RData"))
+  load(paste0(out_path, "/ora_call_result.RData"))
   ora_res_sig <- ora_res[ora_res$p.adjust < 0.05, ]
   
   ## output
