@@ -12,6 +12,7 @@ library(org.Hs.eg.db)
 library(dplyr)
 library(tibble)
 library(Matrix)
+library(bigreadr)
 
 # Function 1: gsea check
 ora.check <- function(data_path1 = NULL,              ## String: data path of svg
