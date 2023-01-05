@@ -1,5 +1,5 @@
 #! /usr/bin/env Rscript
-# Perform over representation analysis
+# Perform over representative analysis
 # up-stream procedure: de.R, svg.R
 # down-stream procedure: ora_plt.R
 
