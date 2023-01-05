@@ -136,7 +136,7 @@ ora.call <- function(out_path
       ora_res_DO$PathwayInfo <- "WikiPathways"
     }
     
-    ora_res <- rbind(ora_res_GO, ora_res_KEGG, ora_res_Wiki, 
+    ora_res <- rbind(ora_res_GO, ora_res_KEGG, ora_res_WikiPathways, 
                      ora_res_Reactome, ora_res_DO)
   } else {
     
