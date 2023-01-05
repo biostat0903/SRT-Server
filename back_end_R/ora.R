@@ -49,6 +49,9 @@ ora.call <- function(out_path
   if(ncol(gene_dat) > 1){
     
     gene_dat <- gene_dat[gene_dat$p_adj < 0.05, 1] %>% unique()
+  } else {
+    
+    gene_dat <- gene_dat[, 1]
   }
   pathway_db <- check_file[3]
   
