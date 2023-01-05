@@ -112,17 +112,17 @@ ora_plt.plot <- function(data_path,                ## String: output path of ora
   } else {
     
     load(call_file[1])
-    dot_plt <- dotplot(ora_res, showCategory = 10)
+    dot_plt <- dotplot(ora_res, showCategory = 10,
+                       font.size = 6, title = pathway_db)
     if(out_figures == TRUE){
       
-      tiff(filename = paste0(result_dir, "/dotplt_", pathway_db, ".tiff"), 
-           width = 4, height = 4, units = "in", res = 300)
-      cat("ok\n")
-      dot_plt
-      dev.off()
+      ggsave(filename = paste0(result_dir, "/dotplt_", pathway_db, ".tiff"),
+             plot = dot_plt,  
+             width = 5, height = 4, units = "in", dpi = 300)
       if(zip_figures == TRUE){
 
-        system(paste0("gzip -f ", result_dir, "/dotplt_", pathway_db, ".tiff"))
+        system(paste0("gzip -f ", result_dir, "/dotplt_",
+                      pathway_db, ".tiff"))
       }
     }
   }
