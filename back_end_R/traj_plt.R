@@ -742,18 +742,3 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
   
   return(0)
 }
-
-
-# ###################
-# ### test code
-# data_path1 <- "/pt_data/494433291@qq.com/c81366e0e1a446a083093da28baea6aa/tools-output/wf-482867673957401152/job-TRAJ-482872551832289856"
-# data_path2 <- "/pt_data/494433291@qq.com/c81366e0e1a446a083093da28baea6aa/tools-output/wf-482867673957401152/job-QC-482867699655901760"
-# output_path <- "/pt_data/494433291@qq.com/c81366e0e1a446a083093da28baea6aa/tools-output/wf-482867673957401152/job-TRAJ_PLT-482939564902580800"
-# traj_plt.plot(data_path1 = data_path1,
-#               data_path2 = data_path2,
-#               out_path = output_path,
-#               start_ct_plot = "1,3",
-#               start_sdd_plot = NA,
-#               hm_gene_num = 5,
-#               sc_gene_num = 4,
-#               out_figures = T)
