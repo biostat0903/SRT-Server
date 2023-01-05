@@ -13,9 +13,12 @@ bubble.process <- function(data_path
   ## load ora file
   post_file <- read.table(paste0(data_path, "/ora_post_file.txt"))[,1]
   ora_mat <- bigreadr::fread2(post_file[1])
-  ora_datt <- data.frame(IDNum = c(1: nrow(ora_mat)), 
-                         Log_p = log10(ora_mat$pvalue), 
-                         Category = ora_mat$PathwayInfo,
+  set.seed(20210826)
+  id <- sample(c(1: nrow(ora_mat)))
+  ora_datt <- data.frame(IDNum = id, 
+                         Log_p = -log10(ora_mat$pvalue), 
+                         Category = factor(ora_mat$PathwayInfo, 
+                                           levels = unique(ora_mat$PathwayInfo)),
                          Count = ora_mat$Count)
   return(ora_datt)
 }
@@ -29,27 +32,27 @@ bubble.visualize <- function(datt
     scale_radius()+
     labs(x = "", y = expression(paste(bold(-log[10]),bold("("),bolditalic(p),bold("-value)"))))+
     theme(axis.text.x=element_blank(),
-          plot.title = element_text(lineheight=.8, face="bold"),
-          axis.text = element_text(size = 30),
+          plot.title = element_text(lineheight = .8, face="bold"),
+          axis.text = element_text(size = 6),
           axis.line = element_line(colour = 'black'),
           axis.ticks = element_line(colour = 'grey80'),
-          axis.title = element_text(size = 40, face = 'bold'),
-          axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          legend.title=element_text(size=24,face = 'bold'),
-          legend.text=element_text(size=24),
+          axis.title = element_text(size = 6, face = 'bold'),
+          legend.title = element_text(size = 3,face = 'bold'),
+          legend.text = element_text(size = 3),
           panel.background = element_blank(),
           panel.grid.minor = element_blank(),
-          panel.grid.major = element_line(colour = 'white'),
-          plot.background = element_blank(),
-          legend.key = element_rect(color = "transparent", fill = "transparent"))+
+          panel.grid.major = element_line(colour = 'white'))+
     geom_hline(yintercept = 1.82, col = 'black',linetype = 2,size=2)+
-    guides(color = guide_legend(order = 1,override.aes = list(alpha = 1,size=7)),
-           size = guide_legend(order = 2,override.aes = list(alpha = 1,shape=21)),
-           fill = FALSE)+ labs(size = "Gene set size")+
-    scale_color_manual(values=c("salmon","gold2","#42d4f4","#3cb44b","chocolate2","#4363d8","#bfef45","#911eb4","#f032e6","#a9a9a9"))+
-    scale_fill_manual(values = c("salmon","gold2","#42d4f4","#3cb44b","chocolate2","#4363d8","#bfef45","#911eb4","#f032e6","#a9a9a9"))+
-    theme(legend.direction = "vertical")+
-    theme(legend.position = c(0.30, 0.85))+
+    guides(color = guide_legend(order = 1, override.aes = list(alpha = 1,size=3)),
+           size = guide_legend(order = 2, override.aes = list(alpha = 1,shape=21)),
+           fill = FALSE)+ 
+    labs(size = "Gene set size")+
+    scale_color_manual(values=c("salmon","gold2","#42d4f4","#3cb44b",
+                                "chocolate2","#4363d8","#bfef45","#911eb4","#f032e6","#a9a9a9"))+
+    scale_fill_manual(values = c("salmon","gold2","#42d4f4","#3cb44b",
+                                 "chocolate2","#4363d8","#bfef45","#911eb4","#f032e6","#a9a9a9"))+
+    theme(legend.direction = "horizontal")+
+    theme(legend.position = c(0.5, 0.85))+
     theme(legend.box = "horizontal")+
     theme(legend.title.align = 0)
   
@@ -70,7 +73,7 @@ bubble.plt <- function(data_path,                  ## String: output path of ora
   if(out_figure == TRUE){
     
     ggsave(filename = paste0(out_path, "/ora_result/Bubble_plot.tiff"), 
-           plot = bubble_plt, height = 6, width = 3,
+           plot = bubble_plt, height = 3, width = 6,
            units = "in", dpi = 300)
     if(zip_figure == TRUE){
       
@@ -110,9 +113,17 @@ ora_plt.plot <- function(data_path,                ## String: output path of ora
     
     load(call_file[1])
     dot_plt <- dotplot(ora_res, showCategory = 10)
+    cat("ok\n")
     if(out_figures == TRUE){
       
-      tiff(dot_plt, file = paste0(out_path, ))
+      tiff(filename = paste0(result_dir, "/dotplt_", pathway_db, ".tiff"), 
+           width = 4, height = 4, units = "in", res = 300)
+      dot_plt
+      dev.off()
+      # if(zip_figures == TRUE){
+      #   
+      #   system(paste0("gzip -f ", result_dir, "/dotplt_", pathway_db, ".tiff"))
+      # }
     }
   }
   
