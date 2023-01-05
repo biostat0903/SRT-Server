@@ -24,7 +24,7 @@ bubble.process <- function(data_path
 bubble.visualize <- function(datt
 ){
   
-  plt <- ggplot(ora_datt, aes(x = IDNum, y = Log_p, color = Category))+
+  plt <- ggplot(datt, aes(x = IDNum, y = Log_p, color = Category))+
     geom_point(shape = 19,aes(fill = Category, size = Count, shape = 19),alpha=0.8)+
     scale_radius()+
     labs(x = "", y = expression(paste(bold(-log[10]),bold("("),bolditalic(p),bold("-value)"))))+
