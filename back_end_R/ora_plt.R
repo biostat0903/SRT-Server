@@ -94,7 +94,7 @@ ora_plt.plot <- function(data_path,                ## String: output path of ora
   ## Load file
   check_file <- read.table(paste0(data_path, "/ora_check_file.txt"))[, 1]
   pathway_db <- check_file[3]
-  call_file <- read.table(paste0(out_path, "/ora_call_file.txt"))[, 1]
+  call_file <- read.table(paste0(data_path, "/ora_call_file.txt"))[, 1]
   
   ## plot
   result_dir <- paste0(out_path, "/ora_result")
