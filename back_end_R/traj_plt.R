@@ -263,7 +263,8 @@ trajUMAP.plot <- function(traj_file,
                           out_path, 
                           submodule,
                           start_clust = NULL,
-                          out_figure = FALSE
+                          out_figure = FALSE, 
+                          zip_figure = FALSE
 ){
   
   trajUMAP_plt <- list()
@@ -288,7 +289,10 @@ trajUMAP.plot <- function(traj_file,
       ggsave(filename = plt_name, 
              plot =   trajUMAP_plt[[namex]], 
              height = traj_ht, width = traj_wt, units = "in", dpi = 300)
-      # system(paste0("gzip -f ", plt_name))
+      if(zip_figure == TRUE){
+        
+        system(paste0("gzip -f ", plt_name))
+      } 
     }
   }
   return(trajUMAP_plt)
@@ -595,7 +599,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                            normalization = T, 
                            load_coord = F)[["count_list"]]
   ## 2. load and choose traj file
-  check_file <- read.table(paste0(out_path, "/traj_check_file.txt"))[, 1]
+  check_file <- read.table(paste0(data_path1, "/traj_check_file.txt"))[, 1]
   submodule <- check_file[2]
   methods <- check_file[3]
   jo_model <- "NA"
@@ -603,16 +607,25 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
     
     jo_model <- ifelse(is.na(check_file[8]), "sdd", "ct")  
   }
-  post_file <- read.table(paste0(out_path, "/traj_post_file.txt"))[, 1]
+  post_file <- read.table(paste0(data_path1, "/traj_post_file.txt"))[, 1]
   if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "ct")) {
-    
     ct_pseudo_file <- post_file[1] %>% 
       strsplit(",") %>% unlist
     ct_ATres_file <- ifelse(is.na(post_file[3]), "NA", 
-                             post_file[4] %>% strsplit(",") %>% unlist)
-    start_ct_use <- post_file[5] %>% 
+                            post_file[4] %>% strsplit(",") %>% unlist)
+      start_ct <- post_file[5] %>% 
       strsplit(",") %>% unlist %>% as.numeric()
+    start_ct_use <- strsplit(start_ct_plot, ",") %>% 
+      unlist %>% as.numeric() %>% intersect(., start_ct)
     cat(start_ct_use, "\n")
+    
+    ## Output
+    result_dir <- paste0(out_path, "/traj_result/", submodule, "/")
+    if (!file.exists(result_dir)){
+      
+      system(paste0("mkdir ", out_path, "/traj_result"))
+      system(paste0("mkdir ", result_dir))
+    }
     if (length(start_ct_use) == 0) {
       
       stop("Start CT cluster specificed for plot not in trajectory result!")
@@ -623,11 +636,6 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                   "NA", 
                                   ct_ATres_file[match(start_ct_use, start_ct)])
     }
-    result_dir <- paste0(out_path, "/traj_result/CT/")
-    if (!file.exists(result_dir)){
-      
-      system(paste0("mkdir ", result_dir))
-    }
     traj_plt <- traj.plot(traj_file = ct_pseudo_file_use, 
                           out_path = result_dir, 
                           start_clust = start_ct_use,
@@ -635,9 +643,10 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                           gridnum = 10,
                           out_figure = out_figures, 
                           zip_figure = zip_figures)
-    if (ct_ATres_file_use == "NA"){
+    if(is.na(ct_ATres_file_use)){
       
-      trajScatter <- NULL
+      trajScatter <- trajHeatmap <- NULL
+
     } else {
       
       trajScatter <- trajScatter.plot(traj_file = ct_pseudo_file_use,
@@ -649,16 +658,16 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                       out_path = result_dir,
                                       out_figure = out_figures, 
                                       zip_figure = zip_figures)
+      trajHeatmap <- trajHeatmap.plot(traj_file = ct_pseudo_file_use,
+                                      ATres_file = ct_ATres_file_use,
+                                      start_clust = start_ct_use,
+                                      norm_list = norm_list,
+                                      out_path = result_dir,
+                                      submodule = submodule,
+                                      n_top = hm_gene_num,
+                                      out_figure = out_figures, 
+                                      zip_figure = zip_figures)
     }
-    # trajHeatmap <- trajHeatmap.plot(traj_file = ct_pseudo_file_use,
-    #                                 ATres_file = ct_ATres_file_use,
-    #                                 start_clust = start_ct_use,
-    #                                 norm_list = norm_list,
-    #                                 out_path = result_dir,
-    #                                 submodule = submodule,
-    #                                 n_top = hm_gene_num,
-    #                                 out_figure = out_figures)
-    #
     if(methods == "Seurat"){
       
       trajUMAP_plt <- trajUMAP.plot(traj_file = ct_pseudo_file_use, 
@@ -671,11 +680,9 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
       
       trajUMAP_plt <- NULL
     }
-    
-    save(traj_plt, 
-         # trajHeatmap, 
-         trajScatter, trajUMAP_plt,
+    save(traj_plt, trajHeatmap, trajScatter, trajUMAP_plt,
          file = paste0(result_dir, "/", submodule,"_plot.RData"))
+         
   }
   
   if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd")) {
@@ -698,11 +705,6 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                    "NA", 
                                    sdd_ATres_file[match(start_sdd_use, start_sdd)])
     }
-    result_dir <- paste0(out_path, "/traj_result/",submodule, "/")
-    if (!file.exists(result_dir)){
-      
-      system(paste0("mkdir ", result_dir))
-    }
     traj_plt <- traj.plot(traj_file = sdd_pseudo_file_use, 
                           out_path = result_dir, 
                           start_clust = start_sdd_use,
@@ -710,9 +712,9 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                           gridnum = 10,
                           out_figure = out_figures, 
                           zip_figure = zip_figures)
-    if (sdd_ATres_file_use == "NA"){
+    if (is.na(sdd_ATres_file_use)){
       
-      trajScatter <- NULL
+      trajScatter <- trajHeatmap <- NULL
     } else {
       
       trajScatter <- trajScatter.plot(traj_file = sdd_pseudo_file_use,
@@ -722,21 +724,19 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                       submodule = submodule,
                                       n_top = sc_gene_num,
                                       out_path = result_dir,
-                                      out_figure = out_figures)
+                                      out_figure = out_figures, 
+                                      zip_figure = zip_figures)
+      trajHeatmap <- trajHeatmap.plot(traj_file = sdd_pseudo_file_use,
+                                      ATres_file = sdd_ATres_file_use,
+                                      start_clust = start_sdd_use,
+                                      norm_list = norm_list,
+                                      out_path = result_dir,
+                                      submodule = submodule,
+                                      n_top = hm_gene_num,
+                                      out_figure = out_figures, 
+                                      zip_figure = zip_figures)
     }
-    #
-    # trajHeatmap <- trajHeatmap.plot(traj_file = sdd_pseudo_file_use,
-    #                                 ATres_file = sdd_ATres_file_use,
-    #                                 start_clust = start_sdd_use,
-    #                                 norm_list = norm_list,
-    #                                 out_path = result_dir,
-    #                                 submodule = submodule,
-    #                                 n_top = hm_gene_num,
-    #                                 out_figure = out_figures)
-    
-    save(traj_plt, 
-         # trajHeatmap, 
-         trajScatter,
+    save(traj_plt, trajHeatmap, trajScatter,
          file = paste0(result_dir, "/", submodule,"_plot.RData"))
   }
   
