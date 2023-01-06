@@ -5,9 +5,9 @@ We develop SRT-Server to perform the analysis of spatial resolved transcriptomic
 The user can use the server to visit the website: https://www.spatialtranscriptomicsanalysis.com
 
 ## Update log
-Version 2.0 (Jan 2023)
+<strong>Version 2.0 (Jan 2023)</strong><br>
 We update R into version 4.2.1 and fix some bugs. We combine the Annot module to CT module. <br>
-Version 1.0 (Dec 2022)
+<strong>Version 1.0 (Dec 2022)</strong><br>
 We first build the SRT-Server to power the spatial resolved transcriptomics (SRT) data analysis. 
 
 ## Example Data
