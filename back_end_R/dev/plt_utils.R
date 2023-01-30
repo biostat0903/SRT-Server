@@ -1,6 +1,6 @@
 #! /usr/bin/env Rscript
 # visualize feature plot and bubble plot after all dr_cl analysis
-# up-stream code: dr_cl.R, dr_cl_sp.R, dr_cl_wrapping.R
+# up-stream code: cl.R, sdd.R
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
