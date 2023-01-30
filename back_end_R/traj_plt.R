@@ -1,6 +1,7 @@
 #! /usr/bin/env Rscript
-# Visualize spatially variable gene (SVG) for ST data
-# We use pattern plot, qq plot and histogram plot to visualize the result of svg
+# Visualize trajectory
+# up-stream code: traj.R
+# down-stream procedure: none
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
@@ -613,7 +614,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
       strsplit(",") %>% unlist
     ct_ATres_file <- ifelse(is.na(post_file[3]), "NA", 
                             post_file[4] %>% strsplit(",") %>% unlist)
-      start_ct <- post_file[5] %>% 
+    start_ct <- post_file[5] %>% 
       strsplit(",") %>% unlist %>% as.numeric()
     start_ct_use <- strsplit(start_ct_plot, ",") %>% 
       unlist %>% as.numeric() %>% intersect(., start_ct)
@@ -646,7 +647,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
     if(is.na(ct_ATres_file_use)){
       
       trajScatter <- trajHeatmap <- NULL
-
+      
     } else {
       
       trajScatter <- trajScatter.plot(traj_file = ct_pseudo_file_use,
@@ -682,7 +683,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
     }
     save(traj_plt, trajHeatmap, trajScatter, trajUMAP_plt,
          file = paste0(result_dir, "/", submodule,"_plot.RData"))
-         
+    
   }
   
   if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd")) {
