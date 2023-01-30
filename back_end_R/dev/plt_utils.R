@@ -13,8 +13,10 @@ library(ggplot2)
 library(hdf5r)
 
 # Set colors
-CL_COLS <- c("#669BBC", "#81B29A", "#F2CC8F", "#ABC178",
-             "#DDE5B6", "#A8DADC", "#E5989B", "#E07A5F")
+CL_COLS <- c("#FD7446" ,"#709AE1", "#31A354","#9EDAE5",
+             "#DE9ED6" ,"#BCBD22", "#CE6DBD" ,"#DADAEB" ,
+             "yellow", "#FF9896","#91D1C2", "#C7E9C0" ,
+             "#6B6ECF", "#7B4173")
 CT_COLS <- c("#98C1D9", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51", 
              "#E0FBFC", "#A8DADC", "#3D5A80", "#81B29A", "#E07A5F", 
              "#DBC9D8", "#b388eb", "#A4277C", "#BC93B2", "#0077b6", 
@@ -97,7 +99,7 @@ feature.plot <- function(data_path1,                   ## String: output path of
                          out_figure = FALSE, 
                          zip_figure = FALSE
 ){
-
+  
   ## load io code
   source(paste0(method_path, "/io.R"))
   
@@ -130,7 +132,7 @@ feature.plot <- function(data_path1,                   ## String: output path of
                               normalization = FALSE, 
                               load_coord = FALSE)[["count_list"]]
     marker_gene_sel <- plyr::llply(count_list, function(a){
-
+      
       seurat_obj_s <- CreateSeuratObject(a)
       seurat_obj_s <- FindVariableFeatures(seurat_obj_s, 
                                            selection.method = "vst", 
@@ -140,7 +142,7 @@ feature.plot <- function(data_path1,                   ## String: output path of
       return(hvg_s)
     })
   } else {
-
+    
     marker_gene <- strsplit(marker_gene_list, ",")[[1]]
     marker_gene_inter <- marker_gene[marker_gene %in% featureID]
     if (length(marker_gene_inter) != 0){
@@ -156,7 +158,7 @@ feature.plot <- function(data_path1,                   ## String: output path of
     }
     marker_gene_sel <- plyr::alply(c(1: sample_size), 1, function(a) marker_gene_inter)
   }
-
+  
   ## process feature plot data
   ft_datt <- feature.process(data_path = data_path2,
                              marker_gene = marker_gene_sel)
@@ -254,7 +256,7 @@ bubble.process <- function(data_path,
     clus_s <- clus_list[[s]]
     count <- count_list[[s]][marker_gene[[s]],]
     datt_s <- lapply(unique(clus_s[, 3]), function(a) {
-    
+      
       count_s <- count[, clus_s[, 3] == a, drop = F]
       avg_exp <- rowMeans(count_s)
       if (do_scale == T) {
@@ -284,7 +286,7 @@ bubble.process <- function(data_path,
   datt$cluster_label <- datt$cluster_label %>%
     factor(., levels = sort(unique(.)))
   datt$cluster_setting <- sub("cluster_", "", colnames(clus)[3])
-
+  
   return(datt)
 }
 
@@ -380,9 +382,9 @@ bubble.plot <- function(data_path1,                   ## String: output path of 
   bb_datt <- plyr::alply(c(1: setting_num), 1, function(a){
     clus_s <- cl_clus[, c(1, 2, 2+a)]
     bb_datt_s <- bubble.process(data_path = data_path2, 
-                                    clus = clus_s, 
-                                    marker_gene = marker_gene_sel,
-                                    do_scale = T)
+                                clus = clus_s, 
+                                marker_gene = marker_gene_sel,
+                                do_scale = T)
   }) %>% Reduce("rbind", .)
   bb_plt <- bubble.visualize(bb_datt)
   
@@ -413,7 +415,7 @@ bubble.plot <- function(data_path1,                   ## String: output path of 
            plot = bb_plt,
            height = bb_ht, width = bb_wt, units = "in", dpi = 300)
     if(zip_figure == TRUE){
-    
+      
       system(paste0("gzip -f ", result_dir, "/Bubble_plt.tiff"))  
     }
     
@@ -431,18 +433,23 @@ loc.visualize <- function(datt,
                           color_in
 ){
   
+  sample_size <- length(unique(datt$sample))
   plt <- ggplot(datt, aes(x = loc_x, y = loc_y, color = cluster)) + 
     geom_point(alpha = 1, size = pointsize) + 
     ggtitle(title_in) + 
-    facet_wrap(~ sample, ncol = 2) +
-    guides(color = guide_legend(byrow = T, ncol = 9,
-                                override.aes = list(size = 2)))+
+    guides(color = guide_legend(byrow = T, ncol = 6))+
     theme_bw() +
     theme(legend.position = "bottom",
+          legend.title = element_text(size=6),
+          legend.text = element_text(size=5),
           axis.title = element_blank(),
           axis.text = element_blank(),
           axis.ticks = element_blank(),
           panel.grid = element_blank())
+  if (sample_size != 1){
+    
+    plt <- plt + facet_wrap(~ sample, ncol = 2)
+  }
   if (vis_type == "cell_type"){
     
     plt <- plt + scale_color_manual("Types", values = color_in)
@@ -484,9 +491,9 @@ loc.process <- function(data_path
 # Function 9: Visualize location plot data 
 loc.plot <- function(data_path1,                   ## String: output path of ct procedure 
                      data_path2,                   ## String: output path of qc procedure
-                     mode_usage = NULL,            ## String: "dr_cl", "dr_cl_wrapping", "dr_cl_sp"
+                     mode_usage = NULL,            ## String: "cl", "sdd"
                      vis_type = "cell_type",       ## String: "cell_type", "spatial_domain"
-                     out_path,                     ## String: output path of dr_cl procedure 
+                     out_path,                     ## String: output path of cl/sdd procedure 
                      out_figure = FALSE,           ## Boolean: output figure
                      zip_figure = FALSE
 ){
@@ -544,7 +551,7 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
     if(out_figure == TRUE){
       
       plt_ht <- min(ceiling(sample_size/2)*2, 6)
-      plt_wt <- min(2, sample_size)*4 + 2
+      plt_wt <- min(2, sample_size)*3.5
       ggsave(filename = loc_name, plot = ct_loc_plt,
              height = plt_ht+1, width = plt_wt, units = "in",
              dpi = 300)
