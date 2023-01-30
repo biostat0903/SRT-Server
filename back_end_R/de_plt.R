@@ -1,5 +1,5 @@
 #! /usr/bin/env Rscript
-# Identify differentially expressed gene in st data
+# Visulize DEGs
 # up-stream code: de.R
 # down-stream procedure: none
 
@@ -123,20 +123,23 @@ heatmap.process <- function(data_path1,                       ## String: output 
   load(call_file[2])
   post_file <- read.table(paste0(data_path1, "/de_post_file.txt"))[, 1]
   submodule <- post_file[length(post_file)]
-  
+  check_file <- read.table(paste0(data_path1, "/de_check_file.txt"))[, 1]
+  jo_model <- "NA"
+  if (length(check_file) == 8){
+    
+    jo_model <- check_file[8]
+  }
   ## form count
   call_file <- paste0(data_path2, "/qc_call_file.txt")
   qc_param <- read.table(call_file)[, 1]
   spatial_data_filename <- qc_param[1]
   sample_size <- qc_param[2] %>% as.numeric
-  
-  # norm data with transpose
+  ## norm data with transpose
   norm_list <- h5data.load(data_filename = spatial_data_filename, 
                            sample_size = sample_size,
                            load_count = T,
                            normalization = T, 
                            load_coord = F)[["count_list"]]
-  
   # combine norm data and scale
   norm_mat_f <- lapply(norm_list, function(a){
     a <- t(a) %>% as.data.frame() # new added as transpose is canceled in io
@@ -144,17 +147,15 @@ heatmap.process <- function(data_path1,                       ## String: output 
   }) %>% Reduce("rbind", .)
   scale_df <- scale(norm_mat_f, center = T, scale = T) %>%
     t() %>% as.data.frame()
-  
   heatmap_list <- list(ct_datt = "NULL", ct_annot_df = "NULL", 
                        sdd_datt = "NULL", sdd_annot_df = "NULL")
-  
-  if (grepl("jo", submodule) |grepl("CT", submodule) ){
+  if (grepl("CT", submodule) | (grepl("jo", submodule)&jo_model=="ct") ){
     
     heatmap_list[[1]] <- scale_df[, ct_df$cell]
     heatmap_list[[2]] <- ct_df
     
   }
-  if (grepl("SDD", submodule) | grepl("jo", submodule)){
+  if (grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd") ){
     
     heatmap_list[[3]] <- scale_df[, sdd_df$cell]
     heatmap_list[[4]] <- sdd_df
@@ -221,13 +222,13 @@ de_plt.plot <- function(data_path1,                       ## String: output path
   check_file <- read.table(paste0(data_path1, "/de_check_file.txt"))[, 1]
   submodule <- check_file[2]
   grid_use <- check_file[5]
-  jo_mod <- "NA"
+  jo_model <- "NA"
   if (length(check_file) == 8){
     
-    jo_mod <- check_file[8]
+    jo_model <- check_file[8]
   }
   
-  if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_mod == "ct")){
+  if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "ct")){
     
     marker_gene <- get.TopDEgene(data_path1, n_top = n_top)
     heatmap_res <- heatmap.process(data_path1 = data_path1, 
@@ -244,7 +245,7 @@ de_plt.plot <- function(data_path1,                       ## String: output path
                                     out_figure,
                                     zip_figure)
   }
-  if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_mod == "sdd")){
+  if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd")){
     
     marker_gene <- get.TopDEgene(data_path1, n_top = n_top)
     heatmap_res <- heatmap.process(data_path1 = data_path1, 
