@@ -1,347 +1,311 @@
 #! /usr/bin/env Rscript
-# visualize UMAP and location plot after using seurat analysis
-# up-stream code: dr_cl.R
+# load packages 
+# up-stream procedure: ccc.R
 
-# Load pacakges
-library(ggplot2)
-library(dplyr)
-library(plyr)
 library(bigreadr)
+library(dplyr)
+library(CellChat)
 
-# Set method_path
-method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-
-CT_COLS <- c("#98C1D9", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51", 
-             "#E0FBFC", "#A8DADC", "#3D5A80", "#81B29A", "#E07A5F", 
-             "#DBC9D8", "#b388eb", "#A4277C", "#BC93B2", "#0077b6", 
-             "#BB3E03", "#FFDDD2", "#F19C79", "#006D77", "#6A3569",
-             "#E6194B", "#4363D8", "#FFE119", "#3CB44B", "#F58231", 
-             "#911EB4", "#46F0F0", "#F032E6", "#BCF60C", "#FABEBE", 
-             "#008080", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", 
-             "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#808080")
-
-# Function 1: Visualize location plot
-umap.visualize <- function(datt, 
-                           pointsize, 
-                           color_in
+# Function 1: Process plot data
+cccdata.process <- function(ccc_mat =NULL, 
+                            target_file = NULL
 ){
   
-  plt <- ggplot(datt, aes(x = UMAP_1, y = UMAP_2, color = cluster)) + 
-    geom_point(alpha = 1, size = pointsize) + 
-    scale_color_manual("Cluster", values = color_in) + 
-    guides(color = guide_legend(byrow = T, nrow = 9,
-                                override.aes = list(size = 2)))+
+  ##format input
+  ccc_mat <- ccc_mat[,c("source", "target",
+                        "ligand", "receptor",
+                        "lr_co_ratio", "lr_co_ratio_pvalue")]
+  colnames(ccc_mat)[5:6] <- c("maginitude", "significance")
+  ccc_mat_sig <- subset(ccc_mat, ccc_mat$significance < 0.05 &
+                          ccc_mat$maginitude > 0.2)
+  ccc_mat_sig$significance <- with(ccc_mat_sig, 
+                                   ifelse(significance > 0.01, 1,
+                                          ifelse(significance > 0.001, 2,
+                                                 ifelse(significance >0.0001, 3, 4)
+                                          )))
+  values <- c(1, 2, 3, 4)
+  names(values) <- c("<0.05", "<0.01", "<0.001", "<0.0001")
+  
+  ##target pairs
+  if (nrow(ccc_mat_sig) == 0) {
     
-    theme_bw() +
-    theme(legend.position = "right",
-          axis.title = element_text(size = 6),
-          axis.text = element_text(size = 6),
-          panel.grid = element_blank())
+    stop("WARNING: Not significant communication iterms left!")
+  } else {
+    
+    all_source <- unique(ccc_mat_sig$source) %>% sort()
+    all_target <- unique(ccc_mat_sig$target) %>% sort()
+    if (is.null(target_file)) {
+      
+      targ_pairs_f <- data.frame(source = rep(all_source, each = length(all_target)), 
+                                 target = rep(all_target, times = length(all_source))) 
+    } else {
+      targ_pairs <- fread2(target_file)
+      colnames(targ_pairs) <- c("source", "target")
+      targ_pairs_f <- subset(targ_pairs, targ_pairs$source %in% all_source &
+                               targ_pairs$target %in% all_target)
+    }
+  }
+  return(list("ccc_mat_sig" = ccc_mat_sig,
+              "values" = values,
+              "targ_pairs" = targ_pairs_f))
+}
+
+# Function 2: circle plot
+circle.visualize <- function(ccc_mat = NULL,
+                             targ_pairs = NULL,
+                             resule_prefix = NULL){
+
+  all_ct <- unique(c(ccc_mat$source, ccc_mat$target))
+  group_size <- length(all_ct)
+  net_mat <- matrix(0, ncol = group_size, nrow = group_size,
+                    dimnames = list(all_ct, all_ct))
+  ## with rows correspond to sources, and columns correspond to targets
+  for (i in seq_along(all_ct)) {
+    for (j in seq_along(all_ct)) {
+      net_mat[i,j] <- subset(ccc_mat, 
+                             ccc_mat$source == all_ct[i] & 
+                               ccc_mat$target == all_ct[j]) %>% nrow()
+    }
+  }
+  ## output circle plot 1
+  tiff(paste0(resule_prefix, "circle_all.tiff"),
+       height = 8, width = 8, units = "in",
+       res = 300, compression = "lzw")
+  netVisual_circle(as.matrix(net_mat), 
+                   vertex.weight = group_size,
+                   weight.scale = T, 
+                   label.edge= F,
+                   arrow.size = 0.5,
+                   title.name = "Number of interactions")
+  dev.off()
+  # system(paste0("gzip -f ", resule_prefix, "circle_all.tiff"))
+  
+  # output circle plot 2
+  n_row <- ceiling(nrow(net_mat)/5)
+  circle_sub_wt <- min(nrow(net_mat), 5) * 3
+  circle_sub_ht <- n_row * 3
+  
+  tiff(paste0(resule_prefix, "circle_by_celltypes.tiff"),
+       height = circle_sub_ht, width = circle_sub_wt, units = "in",
+       res = 300, compression = "lzw")
+  par(mfrow = c(n_row, 5))
+  for (i in sort(rownames(net_mat))) {
+    targ_pairs_sub <- subset(targ_pairs, targ_pairs[,1] == i)
+    netVisual_circle(net_mat, 
+                     vertex.weight = group_size, 
+                     targets.use = as.character(targ_pairs_sub$target),
+                     sources.use = as.character(targ_pairs_sub$source),
+                     weight.scale = T, 
+                     label.edge= T,
+                     arrow.size = 0.5,
+                     edge.weight.max = max(net_mat), 
+                     title.name = paste0("source ", i))
+  }
+  dev.off()
+  # system(paste0("gzip -f ", resule_prefix, "circle_by_celltypes.tiff"))
+  return(c(paste0("Circle plot saved in: ", resule_prefix, "circle_all.tiff"),
+           paste0("Circle subplot saved in: ", resule_prefix, "circle_by_celltypes.tiff")))
+}
+
+
+# Function 3: Visualize feature plot after data process
+circle.plot <- function(ccc_mat, 
+                        result_dir, 
+                        target_file,
+                        submodule
+){
+  
+  ## inputs
+  circle_res <- cccdata.process(ccc_mat = ccc_mat, 
+                                target_file = target_file)
+  ccc_mat_sig <- circle_res[[1]]
+  targ_pairs <- circle_res[[3]]
+  
+  ## circle plot 
+  if (!file.exists(result_dir)) {
+    system(paste0("mkdir -p ", result_dir))
+  }
+  
+  resule_prefix <- paste0(result_dir, "/", submodule, "_")
+  circle_plt_path <- circle.visualize(ccc_mat = ccc_mat_sig,
+                                      targ_pairs = targ_pairs,
+                                      resule_prefix = resule_prefix)
+  return(circle_plt_path)
+}
+
+# Function 4: Process feature plot data
+cccdot.process <- function(ccc_mat, 
+                           n_show = 50
+){
+  
+  ## Load
+  dot_df <- with(ccc_mat,
+                 data.frame(LR = paste0(ligand, ":", receptor),
+                            CC = paste0(source, "->", target),
+                            significance = significance,
+                            maginitude = maginitude))
+  
+  # show top LR pairs
+  if (length(unique(dot_df$LR)) > n_show) {
+    top_LR <- table(dot_df$LR) %>% 
+      sort(.,decreasing = T) %>% 
+      head(.,n_show) %>%
+      names()
+    dot_df <- subset(dot_df, dot_df$LR %in% top_LR)
+  }
+  
+  return(list("dot_df" = dot_df))
+}
+
+# Function 5: plot dotplot
+cccdot.visualize <- function(dot_df = NULL,
+                             values = NULL
+){
+  # plot
+  plt <- ggplot(dot_df, aes(CC,LR))+ 
+    geom_point(aes(color=maginitude, size=significance)) +
+    labs(x= "", y = "")+
+    scale_radius(range = c(min(dot_df$significance), max(dot_df$significance)), 
+                 breaks = sort(unique(dot_df$significance)),
+                 labels = names(values)[values %in% sort(unique(dot_df$significance))], 
+                 name = "Significance")+
+    scale_colour_viridis_c(name = "Maginitude")
+  
   return(plt)
 }
 
-# Function 2: Process UMAP plot data
-umap.process <- function(data_path 
+# Function 6: Visualize dotplot after data process
+cccdot.plot <- function(ccc_mat, 
+                        result_dir, 
+                        target_file,
+                        submodule,
+                        out_figure = TRUE, 
+                        zip_figure = FALSE
 ){
   
-  ## load umap file
-  cl_post_file <- read.table(paste0(data_path, "/ct_post_file.txt"))[,1]
-  umap_outpath <- cl_post_file[2]
-  load(umap_outpath)
+  ## inputs
+  circle_res <- cccdata.process(ccc_mat = ccc_mat, 
+                                target_file = target_file)
+  ccc_mat_sig <- circle_res[[1]]
+  values <- circle_res[[2]]
+  targ_pairs <- circle_res[[3]]
   
-  ## load labels
-  cluster_label <- read.table(paste0(data_path, "/ct_result/ct_pca_seurat_cluster_label.txt"), 
-                              head = T) 
-  umap_cluster_list <- lapply(names(umap_list), function(a){
-    umap_df_a <- umap_list[[a]][cluster_label$cell, ]
-    # corresponding cluster colnames
-    cluster_name_a <- colnames(cluster_label)[grep(a, colnames(cluster_label))]
-    # combine data
-    umap_cluster <- cbind(umap_df_a,
-                          cluster_label[,c("cell", "sample", cluster_name_a)])
-    colnames(umap_cluster) <- c("UMAP_1", "UMAP_2",
-                                "cell", "sample", cluster_name_a)
-    return(umap_cluster)
-  })
-  names(umap_cluster_list) <- names(umap_list)
-  return(umap_cluster_list)
-}
-
-# Function 3: Visualize UMAP plot after data process
-umap.plot <- function(data_path, 
-                      out_path, 
-                      out_figure = FALSE, 
-                      zip_figure = FALSE
-){
-  
-  ## process data
-  datt_list <- umap.process(data_path)
-  
-  ## UMAP plot
-  ct_umap_list <- lapply(names(datt_list), function(a){
+  ## circle plot 
+  dot_plt <- list()
+  for (i in unique(targ_pairs[,1])) {
     
-    # plot on each cluster label
-    cluster_name_a <- colnames(datt_list[[a]])[-c(1:4)]
-    lapply(cluster_name_a, function(cl){
+    ccc_mat_sub <- subset(ccc_mat_sig, 
+                          ccc_mat_sig$source == i | 
+                          ccc_mat_sig$target == i)
+    dot_df_i <- cccdot.process(ccc_mat = ccc_mat_sub, 
+                               n_show = 50)[[1]]
+    dot_plt_i <- cccdot.visualize(dot_df = dot_df_i,
+                                  values = values)
+    dot_plt[[i]] <- dot_plt_i
+    if (out_figure == T) {
       
-      datt <- data.frame(datt_list[[a]][, 1:4],
-                         cluster = datt_list[[a]][[cl]] %>% 
-                           as.factor())
-      ## umap: classify umap by cell type
-      ct_umap_plt <- umap.visualize(datt = datt, 
-                                    pointsize = 0.3, 
-                                    color_in = CT_COLS)
-      if(out_figure == TRUE){
+      # save path
+      dot_ht <- length(unique(dot_df_i[,1]))*0.2 + 3
+      dot_wt <- length(unique(dot_df_i[,2]))*0.5 + 3
+      dot_plt_i <- dot_plt_i + 
+                    theme_bw()+
+                    theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.8),
+                          axis.title = element_text(size = 15, color = "black"),
+                          axis.text = element_text(size = 12, color = "black"))
+      ggsave(filename = paste0(result_dir, "/", submodule, "_dotplot_", i, ".tiff"), 
+             plot = dot_plt_i,
+             height = dot_ht, width = dot_wt, units = "in", dpi = 300)
+      if(zip_figure == TRUE){
         
-        plt_ht <- 3
-        plt_wt <- 4
-        ggsave(filename = paste0(out_path, "/ct_result/UMAP_ct_", cl, ".tiff"),
-               plot = ct_umap_plt,
-               height = plt_ht, width = plt_wt, units = "in", dpi = 300)
-        if(zip_figure == TRUE){
-          
-          system(paste0("gzip -f ", out_path, "/ct_result/UMAP_ct_",
-                        cl, ".tiff"))
-        }
+        system(paste0("gzip -f ", result_dir, "/", submodule, "_dotplot_", i, ".tiff"))
       }
-      return(ct_umap_plt)
-    })
-  })
+    } 
+    message(paste0("Dotplot saved for ", i))
+  }
   
-  return(ct_umap_list)
+  return(dot_plt)
 }
 
-# Function 4
-Seurat.plot.func <- function(data_path1,                              ## String: output path of ct procedure
-                             data_path2,                              ## String: output path of qc procedure
-                             out_path,                                ## String: output path of ct_plt procedure
-                             ft_marker_gene_list = NULL,              ## String: gene list for feature plot
-                             ft_marker_num,                           ## String: gene number for feature plot
-                             bb_marker_gene_list = NULL,              ## String: gene list for bubble plot
-                             bb_marker_num,                           ## String: gene number for bubble plot
-                             out_figures,                             ## Boolean: output figure
-                             zip_figures
+# Function 7
+ccc_plt.plot <- function(data_path, 
+                         out_path, 
+                         ct_target_file = NULL,             ## String: 
+                         sdd_target_file = NULL,
+                         out_figures, 
+                         zip_figures
 ){
   
-  ## Load plt_utils
-  source(paste0(method_path, "/plt_utils.R"))
-  result_dir <- paste0(out_path, "/ct_result")
-  if (!file.exists(result_dir)){
+  ##load
+  ct_ccc_mat_file <- NA
+  post_file <- read.table(paste0(data_path, "/ccc_post_file.txt"), 
+                          header = F, sep = "\t")[, 1]
+  if(grepl("CT", post_file[1])){
     
-    system(paste0("mkdir ", result_dir))
+    ct_ccc_mat_file <- post_file[1]  
   }
-  umap_plt <- umap.plot(data_path = data_path1,
-                        out_path = out_path,
-                        out_figure = out_figures, 
-                        zip_figure = zip_figures)
-  loc_cl_plt <- loc.plot(data_path1 = data_path1,
-                         data_path2 = data_path2,
-                         mode_usage = "ct",
-                         vis_type = "cell_type",
-                         out_path = out_path,
-                         out_figure = out_figures, 
-                         zip_figure = zip_figures)
-  if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
+  if(grepl("jo", post_file[5]) | grepl("SDD", post_file[5])){
     
-    ft_marker_num <- NULL
+    sdd_ccc_mat_file <- post_file[2]  
   }
-  ft_plt <- feature.plot(data_path1 = data_path1,
-                         data_path2 = data_path2,
-                         mode_usage = "ct",
-                         marker_gene_list = NULL,
-                         marker_num = ft_marker_num,
-                         out_path = out_path,
-                         out_figure = out_figures, 
-                         zip_figure = zip_figures)
-  if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
-    
-    bb_marker_num <- NULL
-  }
-  bb_plt <- bubble.plot(data_path1 = data_path1,
-                        data_path2 = data_path2,
-                        mode_usage = "ct",
-                        marker_gene_list = NULL,
-                        marker_num = bb_marker_num,
-                        out_path = out_path,
-                        out_figure = out_figures, 
-                        zip_figure = zip_figures)
-  save(umap_plt, loc_cl_plt, ft_plt, bb_plt,
-       file = paste0(out_path, "/ct_result/plot.RData"))
+  submodule <- post_file[5]
   
-  return(0)
-}
+  ## plot on ct
+  if (!is.na(ct_ccc_mat_file)) {
+    
+    ## read ccc_mat
+    ct_ccc_mat <- fread2(ct_ccc_mat_file)
+    result_dir <- paste0(out_path, "/ccc_result/")
+    if (!file.exists(result_dir)){
+      
+      system(paste0("mkdir ", out_path, "/ccc_result"))
+      system(paste0("mkdir ", result_dir))
+    }
+    
+    ## circle plot
+    circle_plt <- circle.plot(ccc_mat = ct_ccc_mat, 
+                              result_dir = out_path, 
+                              target_file = sdd_target_file,
+                              submodule = submodule)
+    ## dot plot
+    dot_plt <- cccdot.plot(ccc_mat = ct_ccc_mat, 
+                           result_dir = out_path, 
+                           target_file = sdd_target_file,
+                           submodule = submodule,
+                           out_figure = TRUE)
+    save(dot_plt,
+         file = paste0(result_dir, submodule,"_plot.RData"))
+    
+  }
+  
+  ##plot on sdd
+  if (!is.na(sdd_ccc_mat_file)) {
+    
+    ### read ccc_mat
+    sdd_ccc_mat <- fread2(sdd_ccc_mat_file)
+    
+    result_dir <- paste0(out_path, "/ccc_result/", post_file[5], "/")
+    if (!file.exists(result_dir)){
+      
+      system(paste0("mkdir ", out_path, "/ccc_result"))
+      system(paste0("mkdir ", result_dir))
+    }
+    
+    ### circle plot
+    circle_plt <- circle.plot(ccc_mat = sdd_ccc_mat, 
+                              result_dir = result_dir, 
+                              target_file = ct_target_file,
+                              submodule = submodule)
+    ### dot plot
+    dot_plt <- cccdot.plot(ccc_mat = sdd_ccc_mat, 
+                           result_dir = result_dir, 
+                           target_file = ct_target_file,
+                           submodule = submodule,
+                           out_figure = out_figures, 
+                           zip_figure = zip_figures)
+    save(dot_plt,
+         file = paste0(result_dir, submodule,"_plot.RData"))
+    
+  }
 
-# Function 5
-BASS.plot.func <- function(data_path1,                                ## String: output path for ct procedure
-                           data_path2,                                ## String: output path for qc procedure
-                           out_path,                                  ## String: output path for ct procedure
-                           ft_marker_gene_list = NULL,
-                           ft_marker_num,
-                           bb_marker_gene_list = NULL,
-                           bb_marker_num,
-                           out_figures,                             ## Boolean: output figure
-                           zip_figures
-){
-  
-  source(paste0(method_path, "/plt_utils.R"))
-  result_dir <- paste0(out_path, "/ct_result")
-  if (!file.exists(result_dir)){
-    
-    system(paste0("mkdir ", result_dir))
-  }
-  loc_plt1 <- loc.plot(data_path1 = data_path1, 
-                       data_path2 = data_path2, 
-                       mode_usage = "ct", 
-                       out_path = out_path, 
-                       vis_type = "cell_type",
-                       out_figure = out_figures, 
-                       zip_figure = zip_figures)
-  loc_plt2 <- loc.plot(data_path1 = data_path1, 
-                       data_path2 = data_path2,  
-                       mode_usage = "ct", 
-                       out_path = out_path, 
-                       vis_type = "spatial_domain",
-                       out_figure = out_figures, 
-                       zip_figure = zip_figures)
-  if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
-    
-    ft_marker_num <- NULL
-  }
-  ft_plt <- feature.plot(data_path1 = data_path1,
-                         data_path2 = data_path2,
-                         mode_usage = "ct",
-                         marker_gene_list = ft_marker_gene_list,
-                         marker_num = ft_marker_num,
-                         out_path = out_path,
-                         out_figure = out_figures, 
-                         zip_figure = zip_figures)
-  if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
-    
-    bb_marker_num <- NULL
-  }
-  bb_plt <- bubble.plot(data_path1 = data_path1,
-                        data_path2 = data_path2,
-                        mode_usage = "ct",
-                        marker_gene_list = bb_marker_gene_list,
-                        marker_num = bb_marker_num,
-                        out_path = out_path,
-                        out_figure = out_figures, 
-                        zip_figure = zip_figures)
-  save(loc_plt1, loc_plt2, ft_plt, bb_plt, 
-       file = paste0(out_path, "/ct_result/plot.RData"))
-  
-  return(0)
-}
-
-# Function 5
-Annot.plot.func <- function(data_path1,                                ## String: output path for ct procedure
-                            data_path2,                                ## String: output path for qc procedure
-                            out_path,                                  ## String: output path for ct procedure
-                            ft_marker_gene_list = NULL,
-                            ft_marker_num,
-                            bb_marker_gene_list = NULL,
-                            bb_marker_num,
-                            out_figures,                               ## Boolean: output figure
-                            zip_figures
-){
-  
-  source(paste0(method_path, "/plt_utils.R"))
-  result_dir <- paste0(out_path, "/ct_result")
-  if (!file.exists(result_dir)){
-    
-    system(paste0("mkdir ", result_dir))
-  }
-  loc_plt1 <- loc.plot(data_path1 = data_path1, 
-                       data_path2 = data_path2, 
-                       mode_usage = "ct", 
-                       out_path = out_path, 
-                       vis_type = "cell_type",
-                       out_figure = out_figures, 
-                       zip_figure = zip_figures)
-  if (!is.null(ft_marker_gene_list) & !is.null(ft_marker_num)){
-    
-    ft_marker_num <- NULL
-  }
-  ft_plt <- feature.plot(data_path1 = data_path1,
-                         data_path2 = data_path2,
-                         mode_usage = "ct",
-                         marker_gene_list = ft_marker_gene_list,
-                         marker_num = ft_marker_num,
-                         out_path = out_path,
-                         out_figure = out_figures, 
-                         zip_figure = zip_figures)
-  if (!is.null(bb_marker_gene_list) & !is.null(bb_marker_num)){
-    
-    bb_marker_num <- NULL
-  }
-  bb_plt <- bubble.plot(data_path1 = data_path1,
-                        data_path2 = data_path2,
-                        mode_usage = "ct",
-                        marker_gene_list = bb_marker_gene_list,
-                        marker_num = bb_marker_num,
-                        out_path = out_path,
-                        out_figure = out_figures, 
-                        zip_figure = zip_figures)
-  save(loc_plt1, ft_plt, bb_plt, 
-       file = paste0(out_path, "/ct_result/plot.RData"))
-  
-  return(0)
-}
-
-# Function 6
-ct_plt.plot <- function(data_path1,                                ## String: output path for ct procedure
-                        data_path2,                                ## String: output path for qc procedure
-                        out_path,                                  ## String: output path for ct procedure
-                        ft_marker_gene_list = NULL,
-                        ft_marker_num,
-                        bb_marker_gene_list = NULL,
-                        bb_marker_num,
-                        out_figures, 
-                        zip_figures
-){
-  
-  ## load ct check file
-  ct_param <- read.table(paste0(data_path1, "/ct_check_file.txt"))[, 1]
-  ct_methods <- ct_param[1]
-  
-  ## choose different ct methods
-  if (ct_methods == "CT_PCA-Seurat"){
-    
-    ct_result <- Seurat.plot.func(data_path1,                          
-                                  data_path2,                          
-                                  out_path,                            
-                                  ft_marker_gene_list,
-                                  ft_marker_num,
-                                  bb_marker_gene_list,
-                                  bb_marker_num,
-                                  out_figures, 
-                                  zip_figures)
-  }
-  if (ct_methods == "CL_jo-BASS"){
-    
-    ct_result <- BASS.plot.func(data_path1,          
-                                data_path2,          
-                                out_path,            
-                                ft_marker_gene_list,
-                                ft_marker_num,
-                                bb_marker_gene_list,
-                                bb_marker_num,
-                                out_figures, 
-                                zip_figures)
-  }
-  
-  if (ct_methods %in% c("CT_Annot-Garnett", "CT_Annot-scSorter")){
-    
-    ct_result <- Annot.plot.func(data_path1,          
-                                 data_path2,          
-                                 out_path,            
-                                 ft_marker_gene_list,
-                                 ft_marker_num,
-                                 bb_marker_gene_list,
-                                 bb_marker_num,
-                                 out_figures, 
-                                 zip_figures)
-  }
-  
-  return(0)
+  return(0)  
 }
