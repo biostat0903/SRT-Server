@@ -227,10 +227,10 @@ cccdot.plot <- function(ccc_mat,
 }
 
 # Function 7
-ccc_plt.plot <- function(data_path, 
-                         out_path, 
-                         ct_target_file = NULL,             ## String: 
-                         sdd_target_file = NULL,
+ccc_plt.plot <- function(data_path,                         ## String: path of ccc procedure
+                         out_path,                          ## String: path of ccc_plt procedure
+                         ct_target_file = NULL,             ## String: cell type target file
+                         sdd_target_file = NULL,            ## String: cell type target file
                          out_figures, 
                          zip_figures
 ){
