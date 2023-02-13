@@ -65,7 +65,7 @@ ora.call <- function(out_path
   }
   gene_id <- bitr(gene_dat, fromType = "SYMBOL",
                   toType = c("ENTREZID"),
-                  OrgDb = org.Mm.eg.db)
+                  OrgDb = species_db)
   ## GO analysis
   if (pathway_db == "GO" | pathway_db == "ALL"){
     
