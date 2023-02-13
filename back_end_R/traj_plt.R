@@ -197,6 +197,7 @@ traj.plot <- function(traj_file,
                       out_path, 
                       start_clust = NULL,
                       submodule,
+                      jo_model,
                       gridnum = 10,
                       out_figure = FALSE, 
                       zip_figure = FALSE
@@ -375,7 +376,7 @@ heatmap.plot <- function(datt,
 get.TopTrajgene <- function(ATres_result_file,
                             n_top = 50
 ){
-
+  
   ATres_result <- fread2(ATres_result_file)
   top_gene <- ATres_result %>%
     filter(!is.na(waldStat)) %>%
@@ -400,7 +401,7 @@ heatmap.process <- function(norm_list,
   scale_df <- scale(norm_mat_f, center = T, scale = T) %>%
     t() %>% as.data.frame()
   if (!is.null(retain_cell)) {
-    scale_df <- scale_df[,retain_cell]
+    scale_df <- scale_df[, retain_cell]
   }
   message(paste0("Scaled mat on ", ncol(scale_df), " cells and ", nrow(scale_df), " genes retained!"))
   return(scale_df)
@@ -414,6 +415,7 @@ trajHeatmap.plot <- function(traj_file,
                              out_path, 
                              n_top = 50,
                              submodule,
+                             jo_model,
                              out_figure = FALSE, 
                              zip_figure = FALSE
 ){
@@ -475,6 +477,7 @@ trajScatter.process <- function(traj_result_file,
                                 ATres_result_file,
                                 norm_list,
                                 submodule,
+                                jo_model,
                                 n_top
 ){
   
@@ -517,6 +520,7 @@ trajScatter.process <- function(traj_result_file,
 trajScatter.visulize <- function(datt,
                                  color_in,
                                  submodule, 
+                                 jo_model,
                                  pointsize = 1
 ){
   
@@ -535,16 +539,15 @@ trajScatter.visulize <- function(datt,
           panel.grid = element_blank())+
     facet_wrap(~datt$Gene, ncol = 2)
   
-  if(grep("SDD", submodule)) {
+  if(grep("SDD", submodule) | (grepl("jo", submodule)&jo_model == "ct")) {
     
     plt <- plt + scale_colour_manual("Cell Types", values = color_in)
-  } else {
+  } 
+  if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "sdd")){
     
     plt <- plt + scale_colour_manual("Domains", values = color_in)
   }
   
-  
-  # output
   return(plt)
 }
 
@@ -555,6 +558,7 @@ trajScatter.plot <- function(traj_file,
                              norm_list,
                              out_path, 
                              submodule,
+                             jo_model, 
                              n_top = 4,
                              out_figure = FALSE, 
                              zip_figure = FALSE
@@ -572,6 +576,7 @@ trajScatter.plot <- function(traj_file,
                                          ATres_result_file = ATres_file_i, 
                                          norm_list = norm_list,
                                          submodule = submodule,
+                                         jo_model = jo_model,
                                          n_top = n_top)
     
     if (is.null(scatter_res_i) == FALSE){
@@ -581,6 +586,7 @@ trajScatter.plot <- function(traj_file,
       ## traj plot 
       scatter_plt[[namex]] <- trajScatter.visulize(datt = scatter_df_i,
                                                    submodule = submodule,
+                                                   jo_model = jo_model,
                                                    pointsize = 1,
                                                    color_in = color_in_i)
       ## output figure
@@ -653,7 +659,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
       strsplit(",") %>% unlist %>% as.numeric()
     start_ct_use <- strsplit(start_ct_plot, ",") %>% 
       unlist %>% as.numeric() %>% intersect(., start_ct)
-   
+    
     ## Output
     result_dir <- paste0(out_path, "/traj_result/", submodule, "/")
     if (!file.exists(result_dir)){
@@ -679,6 +685,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                           out_path = result_dir, 
                           start_clust = start_ct_use,
                           submodule = submodule,
+                          jo_model = jo_model,
                           gridnum = 10,
                           out_figure = out_figures, 
                           zip_figure = zip_figures)
@@ -687,7 +694,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
       trajScatter <- trajHeatmap <- NULL
       
     } else {
-
+      
       trajScatter <- trajScatter.plot(traj_file = ct_pseudo_file_use,
                                       ATres_file = ct_ATres_file_use,
                                       start_clust = start_ct_use,
@@ -695,6 +702,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                       submodule = submodule,
                                       n_top = sc_gene_num,
                                       out_path = result_dir,
+                                      jo_model = jo_model, 
                                       out_figure = out_figures, 
                                       zip_figure = zip_figures)
       trajHeatmap <- trajHeatmap.plot(traj_file = ct_pseudo_file_use,
@@ -703,6 +711,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                       norm_list = norm_list,
                                       out_path = result_dir,
                                       submodule = submodule,
+                                      jo_model = jo_model, 
                                       n_top = hm_gene_num,
                                       out_figure = out_figures, 
                                       zip_figure = zip_figures)
@@ -763,6 +772,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                           out_path = result_dir, 
                           start_clust = start_sdd_use,
                           submodule = submodule,
+                          jo_model = jo_model, 
                           gridnum = 10,
                           out_figure = out_figures, 
                           zip_figure = zip_figures)
@@ -776,6 +786,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                       start_clust = start_sdd_use,
                                       norm_list = norm_list,
                                       submodule = submodule,
+                                      jo_model = jo_model, 
                                       n_top = sc_gene_num,
                                       out_path = result_dir,
                                       out_figure = out_figures, 
@@ -786,6 +797,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                                       norm_list = norm_list,
                                       out_path = result_dir,
                                       submodule = submodule,
+                                      jo_model = jo_model, 
                                       n_top = hm_gene_num,
                                       out_figure = out_figures, 
                                       zip_figure = zip_figures)
