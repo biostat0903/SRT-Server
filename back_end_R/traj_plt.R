@@ -21,19 +21,26 @@ library(ggtree)
 library(aplot)
 library(patchwork)
 
-COLOR_USE = c("#98C1D9", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51", 
-              "#E0FBFC", "#A8DADC", "#3D5A80", "#81B29A", "#E07A5F", 
-              "#DBC9D8", "#b388eb", "#A4277C", "#BC93B2", "#0077b6", 
-              "#BB3E03", "#FFDDD2", "#F19C79", "#006D77", "#6A3569",
-              "#E6194B", "#4363D8", "#FFE119", "#3CB44B", "#F58231", 
-              "#911EB4", "#46F0F0", "#F032E6", "#BCF60C", "#FABEBE", 
-              "#008080", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", 
-              "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#808080")
+# Set colors
+CL_COLS <- c("#FD7446", "#709AE1", "#31A354", "#9EDAE5", "#DE9ED6",
+             "#BCBD22", "#CE6DBD", "#DADAEB", "yellow", "#FF9896",
+             "#91D1C2", "#C7E9C0" , "#6B6ECF", "#7B4173", "#FABEBE", 
+             "#008080", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", 
+             "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#808080")
+CT_COLS <- c("#98C1D9", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51", 
+             "#E0FBFC", "#A8DADC", "#3D5A80", "#81B29A", "#E07A5F", 
+             "#DBC9D8", "#b388eb", "#A4277C", "#BC93B2", "#0077b6", 
+             "#BB3E03", "#FFDDD2", "#F19C79", "#006D77", "#6A3569",
+             "#E6194B", "#4363D8", "#FFE119", "#3CB44B", "#F58231", 
+             "#911EB4", "#46F0F0", "#F032E6", "#BCF60C", "#FABEBE", 
+             "#008080", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", 
+             "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#808080")
 
 # Function 1: Process trajectory base data
 trajBasedata.process <- function(traj_result_file,
                                  location_type = NULL
 ){
+  
   ## load traj_result
   traj_result <- fread2(traj_result_file)
   base_df <- traj_result[,c("sample", "cell", "cluster_label")]
@@ -82,7 +89,6 @@ trajBasedata.process <- function(traj_result_file,
   
   return(traj_df)
 }
-
 
 # Function 2: Visualize trajectory plot
 traj.visualize <- function(datt,
@@ -209,9 +215,17 @@ traj.plot <- function(traj_file,
     arrow_df_i <- traj_res_i[[2]]
     
     ## traj plot 
+    if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd")){
+      
+      color_in <- CL_COLS
+    }
+    if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "ct")){
+      
+      color_in <- CT_COLS
+    }
     traj_plt[[namex]] <- traj.visualize(datt = traj_df_i,
                                         arrow_df = arrow_df_i,
-                                        color_in = COLOR_USE,
+                                        color_in = color_in,
                                         pointsize = 1,
                                         arrowlength = 0.3,
                                         arrowsize = 0.8)
@@ -222,7 +236,6 @@ traj.plot <- function(traj_file,
       # set plot parameters
       sample_size_i <- length(unique(traj_df_i$sample))
       n_cl_i <- length(unique(traj_df_i$cluster_label))
-      
       traj_ht <- sample_size_i*4 + ceiling(n_cl_i/5)*0.2
       traj_wt <- 10
       plt_name <- paste0(out_path, "/TrajPlot_", submodule, "_", namex,".tiff")
@@ -302,7 +315,8 @@ trajUMAP.plot <- function(traj_file,
 # Function 7: Visualize heatmap plot
 heatmap.plot <- function(datt,
                          cluster_info,
-                         cols){
+                         cols
+){
   
   # format plot mat
   datt <- as.matrix(datt)
@@ -361,14 +375,12 @@ heatmap.plot <- function(datt,
 get.TopTrajgene <- function(ATres_result_file,
                             n_top = 50
 ){
-  ##
+
   ATres_result <- fread2(ATres_result_file)
-  
-  ## top genes
   top_gene <- ATres_result %>%
+    filter(!is.na(waldStat)) %>%
     top_n(n = n_top, wt = -pvalue) %>%
     top_n(n = n_top, wt = abs(meanLogFC))
-  
   traj_gene <- top_gene$gene 
   message(paste0("We use top ", length(traj_gene), " trajectory genes!"))
   return(traj_gene)
@@ -385,10 +397,8 @@ heatmap.process <- function(norm_list,
     a <- t(a) %>% as.data.frame() # new added as transpose is canceled in io
     a[,marker_gene]
   }) %>% Reduce("rbind", .)
-  
   scale_df <- scale(norm_mat_f, center = T, scale = T) %>%
     t() %>% as.data.frame()
-  
   if (!is.null(retain_cell)) {
     scale_df <- scale_df[,retain_cell]
   }
@@ -426,14 +436,17 @@ trajHeatmap.plot <- function(traj_file,
     
     traj_df_order_i <- traj_df_i[order(traj_df_i$pseudotime, na.last = NA), ]
     traj_df_order_i$cluster_label <- as.factor(traj_df_order_i$cluster_label)
-    color_in_i <- COLOR_USE[1:nlevels(traj_df_order_i$cluster_label)]
-    
-    #
+    if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd")){
+      
+      color_in_i <- CL_COLS[1:nlevels(traj_df_order_i$cluster_label)]
+    }
+    if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "ct")){
+      
+      color_in_i <- CT_COLS[1:nlevels(traj_df_order_i$cluster_label)]
+    }
     datt <- heatmap.process(norm_list = norm_list, 
                             retain_cell = traj_df_order_i$cell,
                             marker_gene = traj_gene_i)%>% as.data.frame()
-    
-    ## traj plot 
     heatmap_plt[[namex]] <- heatmap.plot(datt = datt,
                                          cluster_info = traj_df_order_i$cluster_label,
                                          cols = color_in_i)
@@ -461,38 +474,40 @@ trajHeatmap.plot <- function(traj_file,
 trajScatter.process <- function(traj_result_file,
                                 ATres_result_file,
                                 norm_list,
+                                submodule,
                                 n_top
 ){
   
   ## inputs
   traj_df <- trajBasedata.process(traj_result_file = traj_result_file,
                                   location_type = NULL)
-  
-  traj_gene <- get.TopTrajgene(ATres_result_file = ATres_result_file,
-                               n_top = n_top)
-  
   traj_dff <- traj_df[!is.na(traj_df$pseudotime), ]
   traj_dff$cluster_label <- as.factor(traj_dff$cluster_label)
-  color_in <- COLOR_USE[1:nlevels(traj_dff$cluster_label)]
-  
-  # combine norm data and scale
+  if(grepl("SDD", submodule) | (grepl("jo", submodule)&jo_model == "sdd")){
+    
+    color_in <- CL_COLS[1:nlevels(traj_dff$cluster_label)]
+  }
+  if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "ct")){
+    
+    color_in <- CT_COLS[1:nlevels(traj_dff$cluster_label)]
+  }
+  traj_gene <- get.TopTrajgene(ATres_result_file = ATres_result_file,
+                               n_top = n_top)
+  ## combine norm data and scale
   norm_mat_f <- lapply(norm_list, function(a){
     a <- t(a) %>% as.data.frame() # new added as transpose is canceled in io
-    a[,traj_gene]
+    a[, traj_gene]
   }) %>% Reduce("rbind", .)
-  
-  norm_mat_f <- norm_mat_f[traj_dff$cell,]
-  
+  norm_mat_f <- norm_mat_f[traj_dff$cell, ]
   message(paste0("We normalized ", nrow(norm_mat_f), " cells and ", 
                  ncol(norm_mat_f), " genes retained!"))
-  
-  # format input
+  ## format input
   scatter_mat <- cbind(traj_dff, norm_mat_f)
   scatter_df <- reshape2::melt(scatter_mat, 
                                id.vars = c("sample", "cell", "cluster_label", "pseudotime"), 
                                variable.name = "Gene",
                                value.name = "Expression")
-  scatter_df$Gene <- as.character(scatter_df$Gene )
+  scatter_df$Gene <- as.character(scatter_df$Gene)
   
   return(list("scatter_df" = scatter_df,
               "color_in" = color_in))
@@ -501,6 +516,7 @@ trajScatter.process <- function(traj_result_file,
 # Function 12: plot scatter plot
 trajScatter.visulize <- function(datt,
                                  color_in,
+                                 submodule, 
                                  pointsize = 1
 ){
   
@@ -509,7 +525,6 @@ trajScatter.visulize <- function(datt,
   datt$cluster_label <- as.factor(datt$cluster_label)
   plt <- ggplot(datt, aes(x = pseudotime, y = Expression, color = cluster_label)) +
     geom_point(alpha = 1,size = pointsize) +
-    scale_colour_manual("Cluster", values = color_in)+
     theme_bw()+
     theme(legend.position = "right",
           axis.title = element_text(size = 15),
@@ -519,6 +534,15 @@ trajScatter.visulize <- function(datt,
           strip.text.x = element_text(size = 12,color = "black"),
           panel.grid = element_blank())+
     facet_wrap(~datt$Gene, ncol = 2)
+  
+  if(grep("SDD", submodule)) {
+    
+    plt <- plt + scale_colour_manual("Cell Types", values = color_in)
+  } else {
+    
+    plt <- plt + scale_colour_manual("Domains", values = color_in)
+  }
+  
   
   # output
   return(plt)
@@ -539,36 +563,41 @@ trajScatter.plot <- function(traj_file,
   ## inputs
   scatter_plt <- list()
   for (i in seq_along(start_clust)) {
+    
     traj_file_i <- traj_file[i]
     ATres_file_i <- ATres_file[i]
     start_clust_i <- start_clust[i]
     namex <- paste0("start", start_clust_i)
-    
     scatter_res_i <- trajScatter.process(traj_result_file = traj_file_i, 
                                          ATres_result_file = ATres_file_i, 
                                          norm_list = norm_list,
+                                         submodule = submodule,
                                          n_top = n_top)
-    scatter_df_i <- scatter_res_i[["scatter_df"]]
-    color_in_i <- scatter_res_i[["color_in"]]
     
-    ## traj plot 
-    scatter_plt[[namex]] <- trajScatter.visulize(datt = scatter_df_i,
-                                                 pointsize = 1,
-                                                 color_in = color_in_i)
-    ## output figure
-    if (out_figure == TRUE){
+    if (is.null(scatter_res_i) == FALSE){
       
-      n_gene_i <- length(unique(scatter_df_i$Gene))
-      sct_ht <- ceiling(n_gene_i/2) * 3
-      sct_wt <- min(n_gene_i, 2) * 4
-      plt_name <- paste0(out_path, "/Scatter_", submodule, "_", namex,".tiff")
-      ggsave(filename = plt_name, 
-             plot = scatter_plt[[namex]], 
-             height = sct_ht, width = sct_wt, 
-             units = "in", dpi = 300)
-      if(zip_figure == TRUE){
+      scatter_df_i <- scatter_res_i[["scatter_df"]]
+      color_in_i <- scatter_res_i[["color_in"]]
+      ## traj plot 
+      scatter_plt[[namex]] <- trajScatter.visulize(datt = scatter_df_i,
+                                                   submodule = submodule,
+                                                   pointsize = 1,
+                                                   color_in = color_in_i)
+      ## output figure
+      if (out_figure == TRUE){
         
-        system(paste0("gzip -f ", plt_name))
+        n_gene_i <- length(unique(scatter_df_i$Gene))
+        sct_ht <- ceiling(n_gene_i/2) * 3
+        sct_wt <- min(n_gene_i, 2) * 4
+        plt_name <- paste0(out_path, "/Scatter_", submodule, "_", namex,".tiff")
+        ggsave(filename = plt_name, 
+               plot = scatter_plt[[namex]], 
+               height = sct_ht, width = sct_wt, 
+               units = "in", dpi = 300)
+        if(zip_figure == TRUE){
+          
+          system(paste0("gzip -f ", plt_name))
+        }
       }
     }
   }
@@ -610,16 +639,21 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
   }
   post_file <- read.table(paste0(data_path1, "/traj_post_file.txt"))[, 1]
   if(grepl("CT", submodule) | (grepl("jo", submodule)&jo_model == "ct")) {
+    
     ct_pseudo_file <- post_file[1] %>% 
       strsplit(",") %>% unlist
-    ct_ATres_file <- ifelse(is.na(post_file[3]), "NA", 
-                            post_file[4] %>% strsplit(",") %>% unlist)
+    if (is.na(post_file[4])){
+      
+      ct_ATres_file <- "NA"
+    } else {
+      
+      ct_ATres_file <- post_file[4] %>% strsplit(",") %>% unlist
+    }
     start_ct <- post_file[5] %>% 
       strsplit(",") %>% unlist %>% as.numeric()
     start_ct_use <- strsplit(start_ct_plot, ",") %>% 
       unlist %>% as.numeric() %>% intersect(., start_ct)
-    cat(start_ct_use, "\n")
-    
+   
     ## Output
     result_dir <- paste0(out_path, "/traj_result/", submodule, "/")
     if (!file.exists(result_dir)){
@@ -633,9 +667,13 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
     } else {
       
       ct_pseudo_file_use <- ct_pseudo_file[match(start_ct_use, start_ct)]
-      ct_ATres_file_use <- ifelse(ct_ATres_file == "NA", 
-                                  "NA", 
-                                  ct_ATres_file[match(start_ct_use, start_ct)])
+      if(all(sdd_ATres_file == "NA")){
+        
+        ct_ATres_file_use <- "NA"
+      } else {
+        
+        ct_ATres_file_use <- ct_ATres_file[match(start_ct_use, start_ct)]
+      }
     }
     traj_plt <- traj.plot(traj_file = ct_pseudo_file_use, 
                           out_path = result_dir, 
@@ -644,12 +682,12 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                           gridnum = 10,
                           out_figure = out_figures, 
                           zip_figure = zip_figures)
-    if(is.na(ct_ATres_file_use)){
+    if(all(ct_ATres_file_use =="NA")){
       
       trajScatter <- trajHeatmap <- NULL
       
     } else {
-      
+
       trajScatter <- trajScatter.plot(traj_file = ct_pseudo_file_use,
                                       ATres_file = ct_ATres_file_use,
                                       start_clust = start_ct_use,
@@ -690,21 +728,36 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
     
     sdd_pseudo_file <- post_file[2] %>% 
       strsplit(",") %>% unlist
-    sdd_ATres_file <- ifelse(is.na(post_file[4]), "NA", 
-                             post_file[4] %>% strsplit(",") %>% unlist)
+    if (is.na(post_file[4])){
+      
+      sdd_ATres_file <- "NA"
+    } else {
+      
+      sdd_ATres_file <- post_file[4] %>% strsplit(",") %>% unlist
+    }
     start_sdd <- post_file[6] %>% 
       strsplit(",") %>% unlist %>% as.numeric()
     start_sdd_use <- strsplit(start_sdd_plot, ",") %>% 
       unlist %>% as.numeric() %>% intersect(., start_sdd)
+    result_dir <- paste0(out_path, "/traj_result/", submodule, "/")
+    if (!file.exists(result_dir)){
+      
+      system(paste0("mkdir ", out_path, "/traj_result"))
+      system(paste0("mkdir ", result_dir))
+    }
     if (length(start_sdd_use) == 0) {
       
       stop("Start SDD cluster specificed for plot not in trajectory result!")
     } else {
       
       sdd_pseudo_file_use <- sdd_pseudo_file[match(start_sdd_use, start_sdd)]
-      sdd_ATres_file_use <- ifelse(sdd_ATres_file == "NA", 
-                                   "NA", 
-                                   sdd_ATres_file[match(start_sdd_use, start_sdd)])
+      if(all(sdd_ATres_file == "NA")){
+        
+        sdd_ATres_file_use <- "NA"
+      } else {
+        
+        sdd_ATres_file_use <- sdd_ATres_file[match(start_sdd_use, start_sdd)]
+      }
     }
     traj_plt <- traj.plot(traj_file = sdd_pseudo_file_use, 
                           out_path = result_dir, 
@@ -713,7 +766,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
                           gridnum = 10,
                           out_figure = out_figures, 
                           zip_figure = zip_figures)
-    if (is.na(sdd_ATres_file_use)){
+    if (all(sdd_ATres_file_use =="NA")){
       
       trajScatter <- trajHeatmap <- NULL
     } else {
