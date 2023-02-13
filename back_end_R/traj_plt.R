@@ -673,7 +673,7 @@ traj_plt.plot <- function(data_path1,                ## String: output path of t
     } else {
       
       ct_pseudo_file_use <- ct_pseudo_file[match(start_ct_use, start_ct)]
-      if(all(sdd_ATres_file == "NA")){
+      if(all(ct_ATres_file == "NA")){
         
         ct_ATres_file_use <- "NA"
       } else {
