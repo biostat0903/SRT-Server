@@ -447,7 +447,7 @@ decon_plt.plot <- function(data_path1,                     ## String: output pat
                            out_path,                       ## String: output path for decon_plt procedure
                            scMapping = FALSE,              ## Boolean: scMapping
                            out_figures, 
-                           zip_figures
+                           zip_figures = FALSE
 ){
   
   source(paste0(method_path, "/plt_utils.R"))
