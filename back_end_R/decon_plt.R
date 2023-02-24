@@ -117,7 +117,8 @@ pie.visualize <- function(datt,
                           add_theme = FALSE
 ){
   
-  ct.select = colnames(datt)[-c(1:4)]
+  ct.select <- colnames(datt)[-c(1:4)]
+  sample_size <- length(unique(datt$sample))
   plt <- ggplot() + 
     geom_scatterpie(data = datt, aes(x = loc_x, y = loc_y),
                     pie_scale = 0.3,
@@ -125,9 +126,11 @@ pie.visualize <- function(datt,
     coord_equal() + 
     scale_fill_manual(values =  color_in) +
     theme_void() +
-    guides(fill = guide_legend(title = "Cell Type")) + 
-    facet_wrap(~sample, ncol = 2)
-  
+    guides(fill = guide_legend(title = "Cell Type")) 
+  if (sample_size != 1){
+    
+    plt <- plt + facet_wrap(~sample, ncol = 2)
+  }
   if (add_theme == TRUE) {
     
     plt <- plt  + 
@@ -148,7 +151,8 @@ pie.visualize <- function(datt,
 pie.plot <- function(data_path,
                      pie_scale,
                      out_path,
-                     out_figure = FALSE
+                     out_figure = FALSE, 
+                     zip_figure = FALSE
 ){
   
   # process plot data
@@ -160,7 +164,6 @@ pie.plot <- function(data_path,
                                 pie_scale = pie_scale,
                                 color_in = COLOR_USE,
                                 add_theme = out_figure)
-  
   if(out_figure == TRUE){
     
     pie_ht <- ceiling(sample_size / 2) * 5.5
@@ -169,7 +172,10 @@ pie.plot <- function(data_path,
            plot = decon_pie_plt,
            height = pie_ht, width = pie_wt, units = "in", 
            dpi = 300, compression = "lzw")
-    # system(paste0("gzip -f ", out_path, "/decon_result/decon_pie.tiff"))
+    if (zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, "/decon_result/decon_pie.tiff"))
+    }
   }
   
   return(decon_pie_plt)
@@ -226,7 +232,7 @@ propPattern.visualize <- function(datt,
                             labeller = label_parsed)
   } else {
     plt <- plt + facet_wrap(~celltype * sample , ncol = 5, 
-                            dir = "v", labeller = label_parsed)
+                            dir = "h", labeller = label_parsed)
   }
   
   #  
@@ -250,7 +256,8 @@ propPattern.plot <- function(data_path,
                              out_path,
                              ct_sel,
                              point_size,
-                             out_figure = FALSE
+                             out_figure = FALSE, 
+                             zip_figure = FALSE
 ){
   # process plot data
   base_df <- base.process(data_path = data_path)
@@ -267,8 +274,12 @@ propPattern.plot <- function(data_path,
     pp_wt <- min(5, n_ct) * 3 + 1
     ggsave(filename = paste0(out_path, "/decon_result/decon_propPattern.tiff"),
            plot = decon_propPattern,
-           height = pp_ht, width = pp_wt, units = "in", dpi = 300, compression = "lzw")
-    # system(paste0("gzip -f ", out_path, "/decon_result/decon_propPattern.tiff"))
+           height = pp_ht, width = pp_wt, units = "in", 
+           dpi = 300, compression = "lzw")
+    if(zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, "/decon_result/decon_propPattern.tiff"))
+    }
   }
   
   return(decon_propPattern)
@@ -279,7 +290,8 @@ refine.propPattern.plot <- function(data_path,
                                     out_path,
                                     ct_sel,
                                     point_size,
-                                    out_figure = FALSE
+                                    out_figure = FALSE, 
+                                    zip_figure = FALSE
 ){
   # process plot data
   base_df <- refine.process(data_path,
@@ -297,10 +309,13 @@ refine.propPattern.plot <- function(data_path,
     pp_wt <- min(5, n_ct) * 3 + 1
     ggsave(filename = paste0(out_path, "/decon_result/decon_refine_propPattern.tiff"),
            plot = decon_propPattern,
-           height = pp_ht, width = pp_wt, units = "in", dpi = 300, compression = "lzw")
-    # system(paste0("gzip -f ", out_path, "/decon_result/decon_refine_propPattern.tiff"))
+           height = pp_ht, width = pp_wt, units = "in", 
+           dpi = 300, compression = "lzw")
+    if (zip_figure == TRUE){
+      
+      system(paste0("gzip -f ", out_path, "/decon_result/decon_refine_propPattern.tiff"))
+    }
   }
-  
   
   return(decon_propPattern)
 }
@@ -310,7 +325,8 @@ refine.feature.plot <- function(data_path,
                                 out_path, 
                                 point_size,
                                 marker_gene = NULL,
-                                out_figure = FALSE
+                                out_figure = FALSE, 
+                                zip_figure = FALSE
 ){
   
   ## inputs
@@ -344,8 +360,10 @@ refine.feature.plot <- function(data_path,
     ggsave(filename = paste0(out_path, "/decon_result/decon_refine_featurePlot.tiff"), 
            plot = feature_plt,
            height = ft_ht, width = ft_wt, units = "in", dpi = 300, compression = "lzw")
-    # system(paste0("gzip -f ", out_path, "/decon_result/decon_refine_featurePlot.tiff"))
+    if(zip_figure == TRUE){
     
+      system(paste0("gzip -f ", out_path, "/decon_result/decon_refine_featurePlot.tiff"))  
+    }
     print("Feature plot saved!")
   }
   
@@ -356,7 +374,8 @@ refine.feature.plot <- function(data_path,
 deconMapping.loc.plot <- function(data_path, 
                                   out_path, 
                                   point_size,
-                                  out_figure = FALSE
+                                  out_figure = FALSE, 
+                                  zip_figure = FALSE
 ){
   
   # 1. load data
@@ -412,8 +431,10 @@ deconMapping.loc.plot <- function(data_path,
     ggsave(filename =  paste0(out_path, "/decon_result/decon_mapping_locPlot.tiff"), 
            plot = ct_plt,
            height = ct_ht, width = ct_wt, units = "in", dpi = 300, compression = "lzw")
-    # system(paste0("gzip -f ", out_path, "/decon_result/decon_mapping_locPlot.tiff"))
+    if(zip_figure == TRUE){
     
+      system(paste0("gzip -f ", out_path, "/decon_result/decon_mapping_locPlot.tiff"))  
+    }
     print("Feature plot saved!")
   }
   
@@ -425,27 +446,29 @@ decon_plt.plot <- function(data_path1,                     ## String: output pat
                            data_path2,                     ## String: output path for qc procedure 
                            out_path,                       ## String: output path for decon_plt procedure
                            scMapping = FALSE,              ## Boolean: scMapping
-                           out_figures
+                           out_figures, 
+                           zip_figures
 ){
   
   source(paste0(method_path, "/plt_utils.R"))
-  
   ## plot
   decon_pie_plt <- pie.plot(data_path = data_path1,
-                         pie_scale = 0.3,
-                         out_path = out_path,
-                         out_figure = out_figures)
+                            pie_scale = 0.3,
+                            out_path = out_path,
+                            out_figure = out_figures, 
+                            zip_figure = zip_figures)
   prop_pattern_list <- propPattern.plot(data_path = data_path1,
                                         out_path = out_path,
                                         ct_sel = NULL,
                                         point_size = 0.2,
-                                        out_figure = out_figures)
+                                        out_figure = out_figures, 
+                                        zip_figure = zip_figures)
   decon_feature_plt <- feature.plot(data_path1 = data_path1,
                                     data_path2 = data_path2,
                                     out_path = out_path,
                                     mode_usage = "decon",
-                                    # marker_gene_list = "MS4A1,DCN,SCGB2A2,FABP4",
-                                    out_figure = out_figures)
+                                    out_figure = out_figures, 
+                                    zip_figure = zip_figures)
   ## save data
   save(prop_pattern_list, decon_pie_plt, decon_feature_plt, 
        file = paste0(out_path, "/decon_result/plot.RData"))
@@ -453,25 +476,15 @@ decon_plt.plot <- function(data_path1,                     ## String: output pat
   if (scMapping == TRUE){
     
     refine_prop_pattern_list <- refine.propPattern.plot(data_path = data_path1,
-                                                    out_path = out_path,
-                                                    ct_sel = NULL,
-                                                    point_size = 0.2,
-                                                    out_figure = out_figures)
+                                                        out_path = out_path,
+                                                        ct_sel = NULL,
+                                                        point_size = 0.2,
+                                                        out_figure = out_figures, 
+                                                        zip_figure = zip_figures)
     save(prop_pattern_list, decon_pie_plt, decon_feature_plt, 
-         refine_prop_pattern_list,file = paste0(out_path, "/decon_result/plot.RData"))
+         refine_prop_pattern_list,
+         file = paste0(out_path, "/decon_result/plot.RData"))
   } 
   
   return(0)
 }
-
-
-# ###################
-# ### test code
-# data_path1 <- "/net/mulan/disk2/yasheng/stwebProject/test/decon"
-# data_path2 <- "/net/mulan/disk2/yasheng/stwebProject/test/qc"
-# output_path <- "/net/mulan/disk2/yasheng/stwebProject/test/decon_plt"
-# decon_plt.plot(data_path1 = data_path1,
-#             data_path2 = data_path2,
-#             out_path = output_path,
-#             out_figures = TRUE)
-
