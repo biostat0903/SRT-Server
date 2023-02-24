@@ -24,9 +24,9 @@ sdd_plt.plot <- function(data_path1,                                ## String: o
                          data_path2,                                ## String: output path for qc procedure
                          out_path,                                  ## String: output path for sdd_plt procedure
                          ft_marker_gene_list = NULL,
-                         ft_marker_num,
+                         ft_marker_num = NULL,
                          bb_marker_gene_list = NULL,
-                         bb_marker_num,
+                         bb_marker_num = NULL,
                          out_figures, 
                          zip_figures = FALSE
 ){
@@ -74,7 +74,7 @@ sdd_plt.plot <- function(data_path1,                                ## String: o
   ## choose different ct methods
   save(loc_plt2, ft_plt, bb_plt, 
        file = paste0(out_path, "/sdd_result/plot.RData"))
-
+  
   
   return(0)
 }
