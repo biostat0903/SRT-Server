@@ -9,12 +9,13 @@ method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
 # Load packages 
 library(SpaTalk)
 library(liana)
+library(dplyr)
 library(bigreadr)
 library(SingleCellExperiment)
 library(Giotto)
 
 # Set parameters
-N_CORES = 4
+N_CORES = 8
 CELL_RES_PLATFORM <- c("Merfish", "Seqfish", "Generic_Cell")
 SPOT_RES_PLATFORM <- c("Visium", "Slideseq", "Generic_Spot")
 
@@ -48,7 +49,7 @@ ccc.check <- function(data_path1 = NULL,                 ## String: output path 
     spatial_data_filename <- qc_param[1]
     sample_size <- qc_param[2]
     qc_param <- read.table(check_file)[, 1]
-    platform <- qc_param[2]
+    platform <- qc_param[length(qc_param)-2]
   }
   ## Set parameters for different platforms
   if(platform %in% SPOT_RES_PLATFORM){
@@ -97,7 +98,7 @@ ccc.check <- function(data_path1 = NULL,                 ## String: output path 
                       ccc_method, ccc_species, ccc_db, NA,
                       post_file[2], post_file[1])
     }
-    ### Set spatial domain detection modules
+    ### Set PCA modules
     if(grepl("CT", submodule)){
       
       if (methods == "Seurat"){
@@ -108,6 +109,10 @@ ccc.check <- function(data_path1 = NULL,                 ## String: output path 
                                  "_dim", Seurat_dims))
         grid_use <- paste0(grid_pc, "_res", Seurat_resolutions)
       }
+      if (methods == "Garnett" | methods == "scSorter"){
+        
+         grid_use <- "cluster"
+      }
       check_file <- c(spatial_data_filename, submodule, methods,
                       sample_size, grid_use, 
                       ccc_method, ccc_species, ccc_db, NA,
@@ -117,12 +122,15 @@ ccc.check <- function(data_path1 = NULL,                 ## String: output path 
   ## Set parameters for spatalk
   if (ccc_method == "spatalk"){
   
-    if(is.null(data_path3)) {
-    
-      stop("spatalk needs the result of DECON!")  
-    } else {
+    if(platform %in% SPOT_RES_PLATFORM){
       
-      check_file[is.na(check_file)] <- data_path3
+      if(is.null(data_path3) ) {
+      
+        stop("spatalk needs the result of DECON!")  
+      } else {
+      
+        check_file[is.na(check_file)] <- data_path3
+      }
     }
   }
   ## output file
@@ -142,7 +150,8 @@ ccc.func <- function(st_list = NULL,
                      ccc_type = "ccc",
                      ccc_method,
                      ccc_species,
-                     ccc_db){
+                     ccc_db
+){
   
   ## format LR database
   if (ccc_method %in% c("spatalk")) {
@@ -177,6 +186,7 @@ ccc.func <- function(st_list = NULL,
   annot_dat$celltype <- cluster_df[[grid_use]]
   ## fit SpaTalk model
   if (ccc_method == "spatalk") {
+    
     colnames(LR_data) <- c("ligand", "receptor")
     LR_data$species <- ccc_species
     ccc_mat <- SpaTalk.test(expr_dat = count_merged,
@@ -211,7 +221,7 @@ SpaTalk.test <- function(expr_dat = NULL,
     
     ccc_pathway <- SpaTalk::pathways
   }
-  if (platform %in% c("Visium", "Slideseq")){
+  if (platform %in% SPOT_RES_PLATFORM){
     
     ## build SpaTalk object
     load(paste0(decon_path, "/decon_result_list.RData"))
@@ -223,25 +233,34 @@ SpaTalk.test <- function(expr_dat = NULL,
     colnames(annot_dat)[1] <- "spot"
     expr_dat_sub <- expr_dat[, colnames(expr_dat) %in% spot_label]
     annot_dat_sub <- annot_dat[annot_dat[, 1] %in% spot_label, ]
-    obj <- createSpaTalk(st_data = as.matrix(expr_dat_sub),
-                         st_meta = annot_dat_sub[, c(1, 2, 3)],
-                         species = ccc_species,
-                         if_st_is_sc = F,
-                         spot_max_cell = 6)
+
     ## perform deconvolution by DECON result
     ref_dat <- read.table(paste0(decon_path, "/decon_check_file.txt"))[3, 1]
     load(paste0(ref_dat, "/sc_count.RData"))
     load(paste0(ref_dat,"/sc_meta.RData"))
+    inter_gene <- intersect(rownames(expr_dat_sub), rownames(sc_count))
+    sc_count <- sc_count[match(inter_gene, rownames(sc_count)), ]
+    expr_dat_sub <- expr_dat_sub[match(inter_gene, rownames(expr_dat_sub)), ]
     celltype <- gsub(" ", "_", sc_meta$cellType)
+    obj <- createSpaTalk(st_data = as.matrix(expr_dat_sub),
+                         st_meta = annot_dat_sub[, c(1, 2, 3)],
+                         species = ccc_species,
+                         if_st_is_sc = F,
+                         spot_max_cell = 4)
+    # start_time <- Sys.time()
     obj <- dec_celltype(obj, 
                         sc_data = as.matrix(sc_count),
                         sc_celltype = celltype, 
                         if_doParallel = T, 
                         use_n_cores = N_CORES, 
                         dec_result = decon_prop)
-
+    # end_time <- Sys.time()
+    
+    # save(obj, sc_count, celltype,decon_prop, file = "/net/mulan/disk2/yasheng/stwebProject/01_code/02_run/02_Visium/test.RData")
+    # save(decon_prop, file = "/net/mulan/disk2/yasheng/stwebProject/01_code/02_run/02_Visium/test_decon.RData")
+    
   }
-  if (platform %in% c("Merfish", "Seqfish", "Generic")){
+  if (platform %in% CELL_RES_PLATFORM){
     
     obj <- createSpaTalk(st_data = as.matrix(expr_dat),
                          st_meta = annot_dat[, -4],
@@ -251,18 +270,11 @@ SpaTalk.test <- function(expr_dat = NULL,
                          celltype = annot_dat$celltype %>% as.character())
   }
   ## Filter LRIs with downstream targets
-  obj <- tryCatch({
-    
-    find_lr_path(object = obj, 
-                 lrpairs = ccc_db, 
-                 pathways = ccc_pathway,
-                 if_doParallel = T,
-                 use_n_cores = N_CORES)
-  }, error = function(e){
-    
-    print("ERROR")
-  })
-  
+  obj <- find_lr_path(object = obj, 
+                      lrpairs = ccc_db, 
+                      pathways = ccc_pathway,
+                      if_doParallel = T,
+                      use_n_cores = N_CORES)
   
   ## Infer all cell-cell communications 
   if (is.character(obj)) {
@@ -371,7 +383,7 @@ ccc.call <- function(out_path            ## String: output path of ccc procedure
 ccc.post <- function(out_path            ## String: output path of ccc procedure      
 ){
   
-  ## 1. load data
+  ## load data
   check_file <- read.table(paste0(out_path, "/ccc_check_file.txt"))[, 1]
   submodule <- check_file[2]
   ccc_method <- check_file[6]
@@ -381,7 +393,7 @@ ccc.post <- function(out_path            ## String: output path of ccc procedure
   load(call_file[1])
   clus_file <- call_file[2]
   
-  ## 2. output 
+  ## output 
   ct_ccc_mat_file <- sdd_ccc_mat_file <- NA
   result_dir <- paste0(out_path, "/ccc_result/", submodule, "/")
   if (!file.exists(result_dir)) {
