@@ -8,7 +8,6 @@ method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
 
 # load packages 
 library(SPARK)
-library(spatialDE)
 library(dplyr)
 library(amap)
 
