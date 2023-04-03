@@ -6,7 +6,7 @@
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-refer_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/ref"
+refer_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/ref/marker"
 
 # Load packages
 library(Seurat)
@@ -74,14 +74,21 @@ ct.check <- function(data_path,                         ## String: output path o
   ## Output the first method: CT_PCA-Seurat
   if (ct_methods == "CT_PCA-Seurat"){
     
-    if(is.null(Seurat_batch) | Seurat_batch == "Merge"){
+    if(is.null(Seurat_batch)){
       
       Seurat_dims <- NULL
       Seurat_anchors <- NULL
       message("We regard st data as one sample setting!")
     } else {
       
-      message("We regard st data as multiple samples setting!")
+      if(Seurat_batch == "Merge"){
+        
+        Seurat_dims <- NULL
+        Seurat_anchors <- NULL
+      } else {
+        
+        message("We regard st data as multiple samples setting!")
+      }
     }
     if (sample_size != 1){
       
@@ -611,10 +618,10 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
     system(paste0("mkdir ", result_dir))
   }
   clust_file <- paste0(result_dir, "/ct_annot_garnett_cluster.txt")
-  sample_num <- strsplit(colnames(count_dat), "_") %>%
-    llply(., function(a){
-      sub("sample", "", a[1])
-    }) %>% unlist
+  sample_size <- length(st_list)
+  sample_num <- plyr::alply(seq_along(sample_size), 1, function(s){
+    rep(s, ncol(st_list[["count_list"]][[s]]))
+  }) %>% unlist
   cell_type_dat <- data.frame(sample = sample_num, 
                               cell = colnames(count_dat), 
                               cluster = pData(sc_cds)$cluster_ext_type)
@@ -629,7 +636,7 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
 
 # Function 6: ct.call
 ct.call <- function(data_path,                         ## String: output path of qc procedure
-                    out_path                          ## String: output path of ct procedure
+                    out_path                           ## String: output path of ct procedure
 ){
   
   ## Load st data
@@ -711,7 +718,7 @@ Seurat.post.func <- function(data_path,                 ## String: output path o
   return(0)
 }
 
-# Function 8: Seurat.post.func
+# Function 8: BASS.post.func
 BASS.post.func <- function(out_path                     ## String: output path of ct procedure
 ){
   
