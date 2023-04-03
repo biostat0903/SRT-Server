@@ -29,13 +29,16 @@ umap.visualize <- function(datt,
   plt <- ggplot(datt, aes(x = UMAP_1, y = UMAP_2, color = cluster)) + 
     geom_point(alpha = 1, size = pointsize) + 
     scale_color_manual("Cluster", values = color_in) + 
-    guides(color = guide_legend(byrow = T, nrow = 9,
-                                override.aes = list(size = 2)))+
-    
+    guides(color = guide_legend(byrow = TRUE, 
+                                ncol = 6, 
+                                keyheight = 0.4)) +
     theme_bw() +
-    theme(legend.position = "right",
-          axis.title = element_text(size = 6),
-          axis.text = element_text(size = 6),
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 6),
+          legend.text = element_text(size = 5),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
           panel.grid = element_blank())
   return(plt)
 }
@@ -48,10 +51,10 @@ umap.process <- function(data_path
   cl_post_file <- read.table(paste0(data_path, "/ct_post_file.txt"))[,1]
   umap_outpath <- cl_post_file[2]
   load(umap_outpath)
+  # cat(names(umap_list), "\n")
   
   ## load labels
-  cluster_label <- read.table(paste0(data_path, "/ct_result/ct_pca_seurat_cluster_label.txt"), 
-                              head = T) 
+  cluster_label <- fread2(paste0(data_path, "/ct_result/ct_pca_seurat_cluster_label.txt")) 
   umap_cluster_list <- lapply(names(umap_list), function(a){
     umap_df_a <- umap_list[[a]][cluster_label$cell, ]
     # corresponding cluster colnames
@@ -76,25 +79,28 @@ umap.plot <- function(data_path,
   
   ## process data
   datt_list <- umap.process(data_path)
-  
+  sample_size <- length(datt_list)
+
   ## UMAP plot
   ct_umap_list <- lapply(names(datt_list), function(a){
     
     # plot on each cluster label
     cluster_name_a <- colnames(datt_list[[a]])[-c(1:4)]
-    lapply(cluster_name_a, function(cl){
+      lapply(cluster_name_a, function(cl){
       
       datt <- data.frame(datt_list[[a]][, 1:4],
                          cluster = datt_list[[a]][[cl]] %>% 
                            as.factor())
+      p_size <- ifelse(nrow(datt) > 10000, 0.03, 0.3)
       ## umap: classify umap by cell type
       ct_umap_plt <- umap.visualize(datt = datt, 
-                                    pointsize = 0.3, 
+                                    pointsize = p_size, 
                                     color_in = CT_COLS)
+      clus_num <- length(unique(datt$cluster))
       if(out_figure == TRUE){
         
-        plt_ht <- 3
-        plt_wt <- 4
+        plt_ht <- min(ceiling(sample_size/2)*2, 6)+1
+        plt_wt <- min(2, sample_size)*floor(sqrt(clus_num)/1.5)
         ggsave(filename = paste0(out_path, "/ct_result/UMAP_ct_", cl, ".tiff"),
                plot = ct_umap_plt,
                height = plt_ht, width = plt_wt, units = "in", dpi = 300)
@@ -116,9 +122,9 @@ Seurat.plot.func <- function(data_path1,                              ## String:
                              data_path2,                              ## String: output path of qc procedure
                              out_path,                                ## String: output path of ct_plt procedure
                              ft_marker_gene_list = NULL,              ## String: gene list for feature plot
-                             ft_marker_num,                           ## String: gene number for feature plot
+                             ft_marker_num = NULL,                           ## String: gene number for feature plot
                              bb_marker_gene_list = NULL,              ## String: gene list for bubble plot
-                             bb_marker_num,                           ## String: gene number for bubble plot
+                             bb_marker_num = NULL,                           ## String: gene number for bubble plot
                              out_figures,                             ## Boolean: output figure
                              zip_figures
 ){
@@ -176,9 +182,9 @@ BASS.plot.func <- function(data_path1,                                ## String:
                            data_path2,                                ## String: output path for qc procedure
                            out_path,                                  ## String: output path for ct procedure
                            ft_marker_gene_list = NULL,
-                           ft_marker_num,
+                           ft_marker_num = NULL,
                            bb_marker_gene_list = NULL,
-                           bb_marker_num,
+                           bb_marker_num = NULL,
                            out_figures,                             ## Boolean: output figure
                            zip_figures
 ){
@@ -240,7 +246,7 @@ Annot.plot.func <- function(data_path1,                                ## String
                             ft_marker_gene_list = NULL,
                             ft_marker_num,
                             bb_marker_gene_list = NULL,
-                            bb_marker_num,
+                            bb_marker_num ,
                             out_figures,                               ## Boolean: output figure
                             zip_figures
 ){
@@ -293,11 +299,11 @@ ct_plt.plot <- function(data_path1,                                ## String: ou
                         data_path2,                                ## String: output path for qc procedure
                         out_path,                                  ## String: output path for ct procedure
                         ft_marker_gene_list = NULL,
-                        ft_marker_num,
+                        ft_marker_num = NULL,
                         bb_marker_gene_list = NULL,
-                        bb_marker_num,
+                        bb_marker_num = NULL,
                         out_figures, 
-                        zip_figures = FALSE
+                        zip_figures
 ){
   
   ## load ct check file
