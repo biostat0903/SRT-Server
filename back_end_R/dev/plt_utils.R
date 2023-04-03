@@ -13,10 +13,11 @@ library(ggplot2)
 library(hdf5r)
 
 # Set colors
-CL_COLS <- c("#FD7446" ,"#709AE1", "#31A354","#9EDAE5",
-             "#DE9ED6" ,"#BCBD22", "#CE6DBD" ,"#DADAEB" ,
-             "yellow", "#FF9896","#91D1C2", "#C7E9C0" ,
-             "#6B6ECF", "#7B4173")
+CL_COLS <- c("#FD7446", "#709AE1", "#31A354", "#9EDAE5", "#DE9ED6",
+             "#BCBD22", "#CE6DBD", "#DADAEB", "yellow", "#FF9896",
+             "#91D1C2", "#C7E9C0" , "#6B6ECF", "#7B4173", "#FABEBE", 
+             "#008080", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", 
+             "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#808080")
 CT_COLS <- c("#98C1D9", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51", 
              "#E0FBFC", "#A8DADC", "#3D5A80", "#81B29A", "#E07A5F", 
              "#DBC9D8", "#b388eb", "#A4277C", "#BC93B2", "#0077b6", 
@@ -131,6 +132,7 @@ feature.plot <- function(data_path1,                   ## String: output path of
                               load_count = TRUE,
                               normalization = FALSE, 
                               load_coord = FALSE)[["count_list"]]
+
     marker_gene_sel <- plyr::llply(count_list, function(a){
       
       seurat_obj_s <- CreateSeuratObject(a)
@@ -437,15 +439,25 @@ loc.visualize <- function(datt,
   plt <- ggplot(datt, aes(x = loc_x, y = loc_y, color = cluster)) + 
     geom_point(alpha = 1, size = pointsize) + 
     ggtitle(title_in) + 
-    guides(color = guide_legend(byrow = T, ncol = 6))+
-    theme_bw() +
+    theme_bw() + 
     theme(legend.position = "bottom",
-          legend.title = element_text(size=6),
-          legend.text = element_text(size=5),
+          legend.title = element_text(size = 6),
+          legend.text = element_text(size = 5),
           axis.title = element_blank(),
           axis.text = element_blank(),
           axis.ticks = element_blank(),
-          panel.grid = element_blank())
+          panel.grid = element_blank()) 
+  if (max(nchar(as.character(datt$cluster))) > 10){
+    
+    plt <- plt + guides(color = guide_legend(byrow = TRUE, 
+                                             ncol = 2, 
+                                             keyheight = 0.4))
+  } else {
+    
+    plt <- plt + guides(color = guide_legend(byrow = TRUE, 
+                                             ncol = 6, 
+                                             keyheight = 0.4))
+  }
   if (sample_size != 1){
     
     plt <- plt + facet_wrap(~ sample, ncol = 2)
@@ -526,15 +538,17 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
   datt <- loc.process(data_path2)
   sample_size <- length(unique(cl_clus$sample))
   ## location plot
+  p_size <- ifelse(nrow(datt)/sample_size > 10000, 0.03, 0.3)
   ct_loc_list <- lapply(clus_name, function(cl){
     datt$cluster <- cl_clus[, cl] %>% 
       factor(., levels = sort(unique(.)))
+    clus_num <- length(unique(datt$cluster))
     if (vis_type == "cell_type"){
       
       ct_loc_plt <- loc.visualize(datt = datt, 
                                   title_in = "", 
                                   vis_type = vis_type,
-                                  pointsize = 0.3,
+                                  pointsize = p_size,
                                   color_in = CT_COLS) 
       loc_name <- paste0(out_path, "/", mode_usage, 
                          "_result/Location_ct_", cl, ".tiff")
@@ -543,17 +557,17 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
       ct_loc_plt <- loc.visualize(datt = datt, 
                                   title_in = "", 
                                   vis_type = vis_type,
-                                  pointsize = 0.3,
+                                  pointsize = p_size,
                                   color_in = CL_COLS)    
       loc_name <- paste0(out_path, "/", mode_usage, 
                          "_result/Location_sd_", cl, ".tiff")
     }
     if(out_figure == TRUE){
       
-      plt_ht <- min(ceiling(sample_size/2)*2, 6)
-      plt_wt <- min(2, sample_size)*3.5
+      plt_ht <- min(ceiling(sample_size/2)*2, 6)+1
+      plt_wt <- max(plt_ht+1, sample_size*floor(sqrt(clus_num)/1.5))
       ggsave(filename = loc_name, plot = ct_loc_plt,
-             height = plt_ht+1, width = plt_wt, units = "in",
+             height = plt_ht, width = plt_wt, units = "in",
              dpi = 300)
       if(zip_figure == TRUE){
         
