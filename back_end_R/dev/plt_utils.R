@@ -574,6 +574,7 @@ loc.plot <- function(data_path1,                   ## String: output path of ct 
         system(paste0("gzip -f ", loc_name))  
       }
     }
+    return(ct_loc_plt)
   })
   return(ct_loc_list)
 }
