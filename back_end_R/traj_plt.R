@@ -366,9 +366,7 @@ heatmap.plot <- function(datt,
   
   # combine plot to aplot object (could be convert to ggplot via ggplotify::ggplot2)
   plt <- plt_base %>%
-    insert_top(top_anno, height = 0.05) %>%
-    insert_left(phr, width = 0.1)
-  
+    insert_top(top_anno, height = 0.05)   
   return(plt)  
 }
 
