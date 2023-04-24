@@ -11,8 +11,6 @@ method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
 library(dplyr)
 library(BASS)
 library(SpatialPCA)
-# library(umap)
-# library(Rtsne)
 
 # Fix parameters
 DIMS = 20              ## BASS: number of dimension for PCA
@@ -23,33 +21,34 @@ NORM = TRUE
 SCALE = TRUE
 BATCH = FALSE
 N_SPC = 20             ## SpatialPCA: number of pcs used in single sample
-                       ##             (same as fixed in multiple samples)
-
+##             (same as fixed in multiple samples)
+FAST_CUTOFF = 5000     ## SpatialPCA: cutoff of cell number to run SpatialPCA
+##             in a fast mode.
 # Function 1: ct.check
 sdd.check <- function(data_path,                               ## String: output path of qc procedure
                       sdd_submodule = NULL,                    ## String: spatial domain detection sub-modules: {SDD_sPCA}, {CL_jo}
                       methods = NULL,                          ## String: spatial domain detection methods: {SpatialPCA}, {BASS}
                       SpatialPCA_geneType = "spatial",         ## String: The type of genes to be used
-                                                               ##         Three selections: {spatial}, {hvg}, {custom}
+                      ##         Three selections: {spatial}, {hvg}, {custom}
                       SpatialPCA_customGene = "NULL",          ## String: path for user specified genes. 
-                                                               ##         required in gene_type=="custom".
+                      ##         required in gene_type=="custom".
                       SpatialPCA_sparkVer = "NULL",            ## String: selection spark version: {spark}, {sparkx}
-                                                               ##         required in gene_type=="spatial".
+                      ##         required in gene_type=="spatial".
                       SpatialPCA_clusMethod = "louvain",       ## String: clustering method
-                                                               ##         Two selections: {walktrap}, {louvain}
+                      ##         Two selections: {walktrap}, {louvain}
                       SpatialPCA_domainNum = NULL,             ## String: desired cluster number
                       SpatialPCA_kernel = "gaussian",          ## String: kernel for SpatialPCA
-                                                               ##         Four selections: {gaussian}, {cauchy}, {quadratic}, {delaunday}
+                      ##         Four selections: {gaussian}, {cauchy}, {quadratic}, {delaunday}
                       SpatialPCA_coreNum = 1,                  ## Integer: The core numbers for SpatialPCA
                       BASS_cellNum = NULL,                     ## String: number of cell types. 
                       BASS_domainNum = NULL,                   ## String: number of spatial domains.
                       BASS_betaMethod = "SW",                  ## String: fix the cell-cell interaction parameter. 
-                                                               ##         to be beta {fix} or estimate the parameter based on the 
-                                                               ##         data at hand {SW}.
+                      ##         to be beta {fix} or estimate the parameter based on the 
+                      ##         data at hand {SW}.
                       BASS_initMethod = "mclust",              ## String: Initialize the cell type clusters and spatial domains 
-                                                               ##         Two selections: {kmeans}, {mclust}.
+                      ##         Two selections: {kmeans}, {mclust}.
                       BASS_geneSelect = "sparkx",              ## String: feature selection method: spatial gene {sparkx} or
-                                                               ##         high variable gene {hvgs}.
+                      ##         high variable gene {hvgs}.
                       out_path                                 ## String: output path for ct procedure
 ){
   
@@ -65,7 +64,7 @@ sdd.check <- function(data_path,                               ## String: output
   
   ## Output the first method: CT_PCA-Seurat
   if (sdd_methods == "SDD_sPCA-SpatialPCA"){
-
+    
     write.table(c(sdd_methods, 
                   SpatialPCA_geneType, SpatialPCA_customGene, SpatialPCA_sparkVer,
                   SpatialPCA_clusMethod, SpatialPCA_domainNum, SpatialPCA_kernel,
@@ -76,7 +75,7 @@ sdd.check <- function(data_path,                               ## String: output
   
   ## Output the second method: CL_jo-BASS
   if (sdd_methods == "CL_jo-BASS"){
-
+    
     write.table(c(sdd_methods, 
                   BASS_cellNum, BASS_domainNum,
                   BASS_initMethod, BASS_betaMethod, BASS_geneSelect),
@@ -129,8 +128,8 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
                                       min.features = 0) 
     ## estimate spatial PCs
     n_cells <- nrow(st_list[["coord_list"]][[1]])
-    bandwidthtype_use <- ifelse(n_cells <= 3000, "SJ", "Silverman")
-    sparse_Kernel <- ifelse(n_cells <= 3000, FALSE, TRUE)
+    bandwidthtype_use <- ifelse(n_cells <= FAST_CUTOFF, "SJ", "Silverman")
+    sparse_Kernel <- ifelse(n_cells <= FAST_CUTOFF, FALSE, TRUE)
     pca_obj <- SpatialPCA_buildKernel(pca_obj, 
                                       kerneltype = kernel,
                                       bandwidthtype = bandwidthtype_use,
@@ -139,7 +138,7 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
                                       sparseKernel_tol = 1e-20,
                                       sparseKernel_ncore = core_num)
     ## set extra parameters 
-    if (n_cells <= 3000) {
+    if (n_cells <= FAST_CUTOFF) {
       
       est_fast <- pca_fast <- FALSE
     } else {
@@ -187,10 +186,10 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
       cluster_label <- louvain_clustering(clusternum = n_clust, 
                                           latent_dat = as.matrix(spca_obj@SpatialPCs),
                                           knearest = round(sqrt(dim(spca_obj@SpatialPCs)[2])))
-    } else if(clus_method == "walktrap"){
+    } else {
       
       cluster_label <- walktrap_clustering(clusternum = n_clust, 
-                                           latent_dat = as.matrix(spca_obj@SpatialPCs),
+                                           latent_dat = as.matrix(spca_obj@SpatialPCs), 
                                            knearest = round(sqrt(dim(spca_obj@SpatialPCs)[2])))
     }
     clusterlabel_refine  <- refine_cluster_10x(clusterlabels = cluster_label, 
@@ -214,7 +213,7 @@ SpatialPCA.call.func <- function(st_list,                      ## String: output
   spatialPCA_result$pcs <- spca_obj@SpatialPCs %>% 
     as.data.frame()
   dimnames(spatialPCA_result$pcs) <- list(paste0("pc", 1: N_SPC),
-                                        sample_info$cell)
+                                          sample_info$cell)
   spatialPCA_result$normalized_expr <- spca_obj@normalized_expr %>% 
     as.matrix()
   spatialPCA_result$location <- spca_obj@location %>% 
