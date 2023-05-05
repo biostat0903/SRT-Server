@@ -6,7 +6,7 @@
 
 # Set method_path
 method_path <- "/net/mulan/disk2/yasheng/stwebProject/01_code/01_method"
-refer_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/ref/marker"
+refer_path <- "/net/mulan/disk2/yasheng/stwebProject/02_data/ref"
 
 # Load packages
 library(Seurat)
@@ -119,7 +119,7 @@ ct.check <- function(data_path,                         ## String: output path o
   ## Output the second method: CT_Annot-scSorter
   if (ct_methods == "CT_Annot-scSorter"){
     
-    marker_file <- paste0(refer_path, "/", Annot_species, "/",
+    marker_file <- paste0(refer_path, "/cell-marker/", Annot_species, "/",
                           Annot_status, "/marker.csv")
     write.table(c(ct_methods, marker_file),
                 file = paste0(out_path, "/ct_check_file.txt"), 
@@ -129,7 +129,7 @@ ct.check <- function(data_path,                         ## String: output path o
   ## Output the second method: CT_Annot-Garnett
   if (ct_methods == "CT_Annot-Garnett"){
     
-    marker_file <- paste0(refer_path, "/", Annot_species, "/",
+    marker_file <- paste0(refer_path, "/cell-marker/", Annot_species, "/",
                           Annot_status, "/marker.txt")
     write.table(c(ct_methods, marker_file, Annot_species),
                 file = paste0(out_path, "/ct_check_file.txt"), 
@@ -619,7 +619,7 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
   }
   clust_file <- paste0(result_dir, "/ct_annot_garnett_cluster.txt")
   sample_size <- length(st_list)
-  sample_num <- plyr::alply(seq_along(sample_size), 1, function(s){
+  sample_num <- plyr::alply(c(1: sample_size), 1, function(s){
     rep(s, ncol(st_list[["count_list"]][[s]]))
   }) %>% unlist
   cell_type_dat <- data.frame(sample = sample_num, 
@@ -788,3 +788,4 @@ ct.post <- function(data_path,                          ## String: output path o
     return(0)
   }
 }
+
