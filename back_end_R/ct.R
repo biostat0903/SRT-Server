@@ -57,10 +57,13 @@ ct.check <- function(data_path,                         ## String: output path o
   
   ## Set parameters and check QC module
   ct_methods <- paste(ct_submodule, methods, sep="-")
-  qc_param <- read.table(paste0(data_path, "/qc_call_file.txt"))[, 1]
+  qc_param <- read.table(paste0(data_path, "/qc_call_file.txt"), 
+                         header = F)[, 1]
   spatial_data_filename <- qc_param[1]
+  # cat("spatial_data_filename: ", spatial_data_filename, "\n")
   sample_size <- qc_param[2] %>% as.numeric
-  qc_param <- read.table(paste0(data_path, "/qc_check_file.txt"))[, 1]
+  qc_param <- read.table(paste0(data_path, "/qc_check_file.txt"), 
+                         sep = "\t")[, 1]
   platform <- qc_param[2]
   if(platform %in% SPOT_RES_PLATFORM){
     
@@ -70,7 +73,7 @@ ct.check <- function(data_path,                         ## String: output path o
     
     stop("Please run the QC module!")
   }
-
+  
   ## Output the first method: CT_PCA-Seurat
   if (ct_methods == "CT_PCA-Seurat"){
     
@@ -104,10 +107,10 @@ ct.check <- function(data_path,                         ## String: output path o
                   row.names = F, col.names = F, quote = F)
     }
   }
-    
+  
   ## Output the second method: CL_jo-BASS
   if (ct_methods == "CL_jo-BASS"){
-
+    
     ## output
     write.table(c(ct_methods, 
                   BASS_cellNum, BASS_domainNum,
@@ -610,7 +613,7 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
                              cluster_extend = TRUE,
                              cds_gene_id_type = "SYMBOL")
   }
-
+  
   ## Output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
@@ -619,9 +622,10 @@ Garnett.call.func <- function(train = FALSE,            ## Boolean: no training 
   }
   clust_file <- paste0(result_dir, "/ct_annot_garnett_cluster.txt")
   sample_size <- length(st_list)
-  sample_num <- plyr::alply(c(1: sample_size), 1, function(s){
+  sample_num <- plyr::alply(c(1:sample_size), 1, function(s){
     rep(s, ncol(st_list[["count_list"]][[s]]))
   }) %>% unlist
+  cat("sample_size: ", sample_size, "\n")
   cell_type_dat <- data.frame(sample = sample_num, 
                               cell = colnames(count_dat), 
                               cluster = pData(sc_cds)$cluster_ext_type)
@@ -641,8 +645,8 @@ ct.call <- function(data_path,                         ## String: output path of
   
   ## Load st data
   source(paste0(method_path, "/io.R"))
-  call_file <- paste0(data_path, "/qc_call_file.txt")
-  qc_param <- read.table(call_file)[, 1]
+  qc_param <- read.table(paste0(data_path, "/qc_call_file.txt"), 
+                         sep = "\t")[, 1]
   spatial_data_filename <- qc_param[1]
   sample_size <- qc_param[2] %>% as.numeric
   st_list <- h5data.load(spatial_data_filename,      
@@ -705,7 +709,7 @@ Seurat.post.func <- function(data_path,                 ## String: output path o
   ## output
   result_dir <- paste0(out_path, "/ct_result")
   if (!file.exists(result_dir)){
-
+    
     system(paste0("mkdir ", result_dir))
   }
   ### get annotation
@@ -788,4 +792,3 @@ ct.post <- function(data_path,                          ## String: output path o
     return(0)
   }
 }
-
