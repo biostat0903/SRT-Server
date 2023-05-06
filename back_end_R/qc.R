@@ -344,7 +344,7 @@ qc.call <- function(data_path,                ## String: path for st data
   source(paste0(method_path, "/io.R"))
   
   ## load spatial data
-  check_file <- read.table(paste0(data_path, "/qc_check_file.txt"))[, 1]
+  check_file <- fread2(paste0(data_path, "/qc_check_file.txt"), header = F)[, 1]
   sample_size <- length(check_file)-3
   platform <- check_file[sample_size + 1]
   min_features <- check_file[sample_size + 2] %>% as.numeric
