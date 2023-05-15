@@ -100,7 +100,6 @@ heatmap.visualize <- function(datt,
                  top_annotation = top_anno, 
                  column_title = NULL,
                  right_annotation = row_anno,
-                 # raster_by_magick = F,
                  heatmap_legend_param = list(
                    title = "Expression", 
                    at = c(-2, 0, 2)
