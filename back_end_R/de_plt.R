@@ -74,7 +74,7 @@ heatmap.visualize <- function(datt,
     top_anno <- HeatmapAnnotation(Celltype = cluster_info,
                                   col = list(Celltype = cols),
                                   annotation_legend_param = list(Celltype = list(title = "Celltype"),
-                                    just = c("right", "bottom")),
+                                                                 just = c("right", "bottom")),
                                   show_legend = T,
                                   show_annotation_name = F,
                                   annotation_height = 0.1)
@@ -100,12 +100,15 @@ heatmap.visualize <- function(datt,
                  top_annotation = top_anno, 
                  column_title = NULL,
                  right_annotation = row_anno,
+                 # raster_by_magick = F,
                  heatmap_legend_param = list(
                    title = "Expression", 
                    at = c(-2, 0, 2)
                  ),
                  col = col_fun,
-                 use_raster = T)
+                 use_raster = TRUE,
+                 raster_resize = TRUE,
+                 raster_device = "png")
   return(plt)  
 }
 
@@ -193,7 +196,7 @@ heatmap.plot.func <- function(datt,
     file_name <- paste0(out_path, "/de_result/Heatmap_", type, ".tiff")
     tiff(file_name, height = hmp_ht, width = hmp_wt, units = "in", 
          res = 300, compression = "lzw")
-    print(heatmap_plt)
+    draw(heatmap_plt)
     dev.off()
     if(zip_figure == TRUE){
       
