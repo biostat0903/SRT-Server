@@ -25,4 +25,4 @@ If there are any problems for SRT-Server, please feel free to ask here. We will 
 
 ## Citation
 If you used our server, please cite the our paper: <br>
-<em> Sheng Yang, Xiang Zhou, 2023, <strong> SRT-Server: Powering the analysis of spatially resolved transcriptomics studies. </strong> <\em>
+<em> Sheng Yang, Xiang Zhou, 2023, <strong> SRT-Server: Powering the analysis of spatially resolved transcriptomics studies. </strong> </em>
