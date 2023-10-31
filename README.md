@@ -24,4 +24,5 @@ We first build the SRT-Server to power the spatial resolved transcriptomics (SRT
 If there are any problems for SRT-Server, please feel free to ask here. We will ask you as soon as possible. 
 
 ## Citation
-If you used our server, please cite the our paper: <em> SRT-Server: Powering the analysis of spatially resolved transcriptomics studies <\em>
+If you used our server, please cite the our paper: <br>
+<em> Sheng Yang, Xiang Zhou, 2023, <strong> SRT-Server: Powering the analysis of spatially resolved transcriptomics studies. </strong> <\em>
