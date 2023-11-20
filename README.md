@@ -5,6 +5,10 @@ We develop SRT-Server to perform the analysis of spatial resolved transcriptomic
 The user can use the server to visit the website: https://spatialtranscriptomicsanalysis.com
 
 ## Update log
++ <strong>Version 3.1 (Nov 2023)</strong><br>
+We update the DECON_PY and TRAJ module, add the Tutorial webpage and Example Data webpage, and debug some errors. <br>
++ For Example Data webpage, we add the demo video for quick start and three case studies and add the Case Study 2.<br>
++ For Debug buttom, we add the result downloding.<br>
 + <strong>Version 3.0 (Oct 2023)</strong><br>
 We update the DECON_PY and TRAJ module, add the Tutorial webpage and Example Data webpage, and debug some errors. <br>
   + For DECON_PY, we add two methods: cell2location and Tangram.<br>
