@@ -6,7 +6,7 @@ The user can use the server to visit the website: https://spatialtranscriptomics
 
 ## Update log
 + <strong>Version 3.1 (Nov 2023)</strong><br>
-We update the DECON_PY and TRAJ module, add the Tutorial webpage and Example Data webpage, and debug some errors. <br>
+We update the Example Data webpage, and add downloading function. <br>
   + For Example Data webpage, we add the demo video for quick start and three case studies and add the Case Study 2.<br>
   + For Debug buttom, we add the result downloding.<br>
 + <strong>Version 3.0 (Oct 2023)</strong><br>
